@@ -113,14 +113,12 @@
 	// Load the API and make an API call.  Display the results on the screen.
 	function makeApiCall() 
 	{
-    	gapi.client.load('plus', 'v1').then(function()
-    	{
-    	var request = gapi.client.plus.people.get({
-    	'userId': 'me'
-    	});
+		gapi.client.load('plus', 'v1').then(function()
+		{
+			var request = gapi.client.plus.people.get({ 'userId': 'me' });
 
-    	request.execute(function(resp)
-    	{
+    		request.execute(function(resp)
+	    	{
 			var heading = document.createElement('h4');
 			var image = document.createElement('img');
 
@@ -133,16 +131,16 @@
 			}
 			catch(err)
 			{
-				googleEmail = "unknown";
+					googleEmail = "unknown";
 			}
 			document.getElementById('content').appendChild(heading);
 
-        	document.getElementById("divLoadingMsg").innerHTML = "Page State: User Logged In, Awaiting Selection.."
+			document.getElementById("divLoadingMsg").innerHTML = "Page State: User Logged In, Awaiting Selection.."
 			var docEl;
 			docEl = document.getElementById("msgSignIn");
 			docEl.innerHTML = resp.displayName + " is now signed in...";
-    	});
-	});
+    		});
+		});
 	} // makeApiCall
 
 
