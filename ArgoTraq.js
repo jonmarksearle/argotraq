@@ -291,13 +291,6 @@
     	theMetaLoader.checkCogIDFinPtr = setInterval(checkCogIDFinFunc, 1000);
 	}
 
-	var UploadPos = function()
-	{
-    	var posOptions = {timeout: 5000, enableHighAccuracy: false};
-    	navigator.geolocation.getCurrentPosition(updateLocationData, errorOccured, posOptions);
-	}
-
-
    var getCogIDFunc = function()
    {
 
@@ -376,13 +369,11 @@
    }
 
 
-
-
-
    var getMetaDataFunc = function()
    {
        var endPos = theMetaLoader.lastFileMarker.indexOf("/meta-");
 	   var metaKey;
+	   var metaIndex;
 
 	   if  (endPos >=0 )
 	   {
@@ -456,8 +447,6 @@
 
    }
 
-
-
   function GetFile(fileKey)
    {
        s3.getObject({Bucket: s3Bucket, Key: fileKey}, function(error, data)
@@ -480,121 +469,10 @@
                for (var i = 0; i < theMapAddressesTemp.length; i++)
                    console.log("the map addresses[i] : " + theMapAddressesTemp[i]);
 
-               CheckDeviceToShow();
 	       }
        });
 
    }
-
-
-
-
-   function CheckDeviceToShow()
-   {
-       var minDate = new Date();
-
-       minDate.setDate(minDate.getDate() - 1);
-       console.log("Minimum date: " + minDate.valueOf());
-
-	   for (var i=0; i<theMapAddressesTemp.length; i++)
-	   {
-		   var s3Data = theMapAddressesTemp[i];
-		   var lastTracked = s3Data["lastTracked"];
-		   var latitude = s3Data.lastObject.lat
-
-		   if  (lastTracked > minDate)
-		       theMapAddresses.push(s3Data);
-
-       }
-
-       docEl = document.getElementById("divLoadingMsg");
-
-       if  (theMapAddresses.length == 0)
-       {
-		   docEl.innerHTML = "Page State: No recent tracking device data found, no device tracking info to show..";
-		   return;
-       }
-
-       ShowMap("Page State: Map loaded, auto-refresh will occur every 60 seconds..")
-   }
-
-
-
-
-   function ShowMap(pageStateMsg)
-   {
-       SetDisplayArea('none', 'block');
-	   var domMapCanvass = document.getElementById("map");
-	   var zoomVal = 12
-
-       var infoWindow = new google.maps.InfoWindow({
-                            content: ""
-                          });
-       oMapDetail = new MapDetail(domMapCanvass, zoomVal, infoWindow);
-
-
-	   for (var i=0; i<theMapAddresses.length; i++)
-	   {
-
-	        googleMap = AddPointToMap(i);
-	        oMapDetail.SetGoogleMap(googleMap);
-	   }
-
-       docEl = document.getElementById("divLoadingMsg");
-       docEl.innerHTML = pageStateMsg;
-   }
-
-
-
-
-   function SetDisplayArea(msgVal, mapVal)
-   {
-       var msgArea = document.getElementById("divMsgArea");
-       msgArea.style.display = msgVal;
-       var domMapCanvass = document.getElementById("map");
-       domMapCanvass.style.display = mapVal;
-       return msgArea;
-   }
-
-
-
-
-   function AddPointToMap(i)
-   {
-       var googleMap = oMapDetail.GetGoogleMap();
-       console.log("i value: " + i);
-        var s3Data = theMapAddresses[i];
-                    lat = s3Data.lastObject.lat;
-             lng = s3Data.lastObject.lng;
-       console.log("add point to map, lat: " + lat);
-       console.log("add point to map, lng: " + lng);
-
-       if  (googleMap == null)
-       {
-		   console.log("google map was null..");
-           var myOptions =
-           {
-               zoom : oMapDetail.GetZoomVal(),
-               center: new google.maps.LatLng(lat, lng)
-           };
-
-           googleMap = new google.maps.Map(oMapDetail.GetDomMapCanvass(), myOptions);
-           oMapDetail.SetGoogleMap(googleMap);
-       }
-
-
-       var thePoint = new google.maps.LatLng(lat, lng);
-
-       var marker = new google.maps.Marker({
-			               position: thePoint,
-                           map: googleMap,
- 		                   title:  "Bendigo, Victoria"
-                                     });
-
-       oMapDetail.SetMarker(marker);
-       console.log("adding marker to map");
-       return googleMap;
-    }
 
 
 
