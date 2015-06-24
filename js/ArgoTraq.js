@@ -3,7 +3,6 @@ var s3;
 var s3Data;
 var s3Bucket = 'argotraq-data';
 var amazonAccID = '940653267411'; //  AWS account ID
-//var cognitoIdentity = 'us-east-1:14cce2b7-a33b-4a73-ace5-403142a023d8';
 var identityPoolID = 'us-east-1:0aa587c3-9e10-4e1b-8484-7e85f38ca62f';
 var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_HeinrichArgoTraqAuth_Role';
 var roleArnUnAuth = 'arn:aws:iam::940653267411:role/Cognito_HeinrichArgoTraqUnauth_Role';
@@ -45,8 +44,9 @@ var apiKey = 'AIzaSyDaT6jJ8Ag4vySXO8OztG5V0Q9GWVRJhbA';
 // To enter one or more authentication scopes, refer to the documentation for the API.
 var scopes = 'https://www.googleapis.com/auth/plus.login';
 
-var googleToken;
-var authResponse;
+// unnecessary to save googleToken and authResponse to var. Can be accessed through gapi.auth.getToken()
+//var googleToken;
+//var authResponse;
 
 
 //
@@ -68,16 +68,16 @@ function checkAuth() {
 
 function handleAuthResult(authResult) {
 	//  alert("inside handle auth result");
-	// TODO ?
-	googleToken = authResult.access_token;
-	authResponse = authResult;
+	// unnecessary to save googleToken and authResponse to var. Can be accessed through gapi.auth.getToken()
+	//googleToken = authResult.access_token;
+	//authResponse = authResult;
+	console.log(gapi.auth.getToken());
 
 	var authorizeButton = document.getElementById('acrSignIn');
 
 	if (authResult && !authResult.error) {
 		console.log("google already authorized");
 		authorizeButton.style.visibility = 'hidden';
-		console.log(authorizeButton);
 		makeApiCall();
 		HandleAmazonAuth();
 	}
@@ -153,14 +153,15 @@ function checkAuth2() {
 
 function handleAuthResult2(authResult) {
 	console.log("unauth handle result");
-	googleToken = authResult.access_token;
-	console.log(googleToken);
-	authResponse = authResult;
-	console.log(authResult);
+	// unnecessary to save googleToken and authResponse to var. Can be accessed through gapi.auth.getToken()
+	//googleToken = authResult.access_token;
+	//console.log(gapi.auth.getToken().access_token);
+	//authResponse = authResult;
+	//console.log(gapi.auth.getToken());
 
 	// no API call because not authorized. What to do?
 	if (authResult && !authResult.error) {
-		console.log("api call");
+		console.log("google authenticated already before");
 		makeApiCall();
 		HandleAmazonAuth();
 	}
@@ -197,15 +198,42 @@ function UnauthLogin() {
 
 function HandleAmazonAuth() {
 	console.log("amazon auth");
-	console.log(googleToken);
+	console.log(gapi.auth.getToken());
 
 	var cred = new AWS.CognitoIdentityCredentials({
-		AccountId: amazonAccID,
 		IdentityPoolId: identityPoolID,
 		Logins: {
-			'accounts.google.com': googleToken
+			'accounts.google.com': gapi.auth.getToken().access_token
 		},
-		RoleArn: roleArnAuth
+	});
+
+	AWS.config.update({
+		region: 'us-east-1',
+		credentials: cred
+	});
+
+	AWS.config.credentials.get(function(err) {
+		if (!err)
+			console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
+		else
+			console.log(err);
+	});
+
+	s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
+	console.log(s3);
+
+	console.log(s3);
+} // HandleAmazonAuth
+
+//
+// config for Amazon Unauthenticated login start..
+//
+
+function HandleAmazonUnauth() {
+	console.log("amazon unauth");
+
+	var cred = new AWS.CognitoIdentityCredentials({
+		IdentityPoolId: identityPoolID,
 	});
 
 	AWS.config.update({
@@ -220,36 +248,27 @@ function HandleAmazonAuth() {
 			console.log(err);
 	});
 	
-	s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
-	console.log(s3);
+	AWS.config.apiVersions = {
+  		s3: '2006-03-01',
+  		// other service API versions
+	};
 	
-	console.log(s3);
-} // HandleAmazonAuth
-
-//
-// config for Amazon Unauthenticated login start..
-//
-
-function HandleAmazonUnauth() {
-	console.log("amazon unauth");
-	var cred;
-
-	cred = new AWS.CognitoIdentityCredentials({
-		AccountId: amazonAccID,
-		RoleArn: roleArnUnAuth,
-		IdentityPoolId: identityPoolID,
-		//IdentityId: cognitoIdentity
-	});
-
-	AWS.config.update({
-		region: 'us-east-1',
-		credentials: cred
-	});
-
-	s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
-	console.log(s3);
+	HandleS3Data();
 } // HandleAmazonUnauth
 
+function HandleS3Data() {
+	s3 = new AWS.S3();
+	console.log(s3);
+	
+	s3.listObjects({
+		Bucket: s3Bucket
+	}, function(err, data) {
+		if (err)
+			console.log(err);
+		else
+			console.log(data);
+	});
+}
 
 //
 // Main module for map build and render..
