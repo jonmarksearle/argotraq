@@ -3,10 +3,9 @@ var s3;
 var s3Data;
 var s3Bucket = 'argotraq-data';
 var amazonAccID = '940653267411'; //  AWS account ID
-//var cognitoIdentity = 'us-east-1:14cce2b7-a33b-4a73-ace5-403142a023d8';
-var identityPoolID = 'us-east-1:0aa587c3-9e10-4e1b-8484-7e85f38ca62f';
-var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_HeinrichArgoTraqAuth_Role';
-var roleArnUnAuth = 'arn:aws:iam::940653267411:role/Cognito_HeinrichArgoTraqUnauth_Role';
+var identityPoolID = 'us-east-1:d2737579-aaee-49c1-95c7-d78c0dd164ff';
+var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_ArgoTraqAuth_Role';
+var roleArnUnAuth = 'arn:aws:iam::940653267411:role/Cognito_ArgoTraqUnauth_Role';
 
 // Map build and display variables..
 var lat;
@@ -19,6 +18,29 @@ var theMapAddressesTemp = null;
 var callLogin = true;
 var googleEmail;
 
+//
+// Setup Leaflet Map
+//
+
+/* Setup map view */
+var map = L.map('map').setView([-37.813611, 144.963056], 10)
+
+
+/* Add an Map tile layer. */
+L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
+	maxZoom: 18,
+	attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+		'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+		'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+	id: 'examples.map-i875mjb7'
+}).addTo(map);
+
+function onEachFeature(feature, layer) {
+    // does this feature have a property named popupContent?
+    if (feature.properties && feature.properties.popupContent) {
+        layer.bindPopup(feature.properties.popupContent);
+    }
+}
 
 //
 // Google Authorise First Go Start
@@ -45,8 +67,9 @@ var apiKey = 'AIzaSyDaT6jJ8Ag4vySXO8OztG5V0Q9GWVRJhbA';
 // To enter one or more authentication scopes, refer to the documentation for the API.
 var scopes = 'https://www.googleapis.com/auth/plus.login';
 
-var googleToken;
-var authResponse;
+// unnecessary to save googleToken and authResponse to var. Can be accessed through gapi.auth.getToken()
+//var googleToken;
+//var authResponse;
 
 
 //
@@ -68,16 +91,16 @@ function checkAuth() {
 
 function handleAuthResult(authResult) {
 	//  alert("inside handle auth result");
-	// TODO ?
-	googleToken = authResult.access_token;
-	authResponse = authResult;
+	// unnecessary to save googleToken and authResponse to var. Can be accessed through gapi.auth.getToken()
+	//googleToken = authResult.access_token;
+	//authResponse = authResult;
+	console.log(gapi.auth.getToken());
 
 	var authorizeButton = document.getElementById('acrSignIn');
 
 	if (authResult && !authResult.error) {
 		console.log("google already authorized");
 		authorizeButton.style.visibility = 'hidden';
-		console.log(authorizeButton);
 		makeApiCall();
 		HandleAmazonAuth();
 	}
@@ -153,14 +176,15 @@ function checkAuth2() {
 
 function handleAuthResult2(authResult) {
 	console.log("unauth handle result");
-	googleToken = authResult.access_token;
-	console.log(googleToken);
-	authResponse = authResult;
-	console.log(authResult);
+	// unnecessary to save googleToken and authResponse to var. Can be accessed through gapi.auth.getToken()
+	//googleToken = authResult.access_token;
+	//console.log(gapi.auth.getToken().access_token);
+	//authResponse = authResult;
+	//console.log(gapi.auth.getToken());
 
 	// no API call because not authorized. What to do?
 	if (authResult && !authResult.error) {
-		console.log("api call");
+		console.log("google authenticated already before");
 		makeApiCall();
 		HandleAmazonAuth();
 	}
@@ -197,15 +221,13 @@ function UnauthLogin() {
 
 function HandleAmazonAuth() {
 	console.log("amazon auth");
-	console.log(googleToken);
+	console.log(gapi.auth.getToken());
 
 	var cred = new AWS.CognitoIdentityCredentials({
-		AccountId: amazonAccID,
 		IdentityPoolId: identityPoolID,
 		Logins: {
-			'accounts.google.com': googleToken
+			'accounts.google.com': gapi.auth.getToken().access_token
 		},
-		RoleArn: roleArnAuth
 	});
 
 	AWS.config.update({
@@ -219,10 +241,10 @@ function HandleAmazonAuth() {
 		else
 			console.log(err);
 	});
-	
+
 	s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
 	console.log(s3);
-	
+
 	console.log(s3);
 } // HandleAmazonAuth
 
@@ -232,13 +254,9 @@ function HandleAmazonAuth() {
 
 function HandleAmazonUnauth() {
 	console.log("amazon unauth");
-	var cred;
 
-	cred = new AWS.CognitoIdentityCredentials({
-		AccountId: amazonAccID,
-		RoleArn: roleArnUnAuth,
+	var cred = new AWS.CognitoIdentityCredentials({
 		IdentityPoolId: identityPoolID,
-		//IdentityId: cognitoIdentity
 	});
 
 	AWS.config.update({
@@ -246,10 +264,119 @@ function HandleAmazonUnauth() {
 		credentials: cred
 	});
 
-	s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
-	console.log(s3);
+	AWS.config.credentials.get(function(err) {
+		if (!err)
+			console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
+		else
+			console.log(err);
+	});
+
+	AWS.config.apiVersions = {
+		s3: '2006-03-01',
+		// other service API versions
+	};
+
+	HandleS3Data();
 } // HandleAmazonUnauth
 
+function HandleS3Data() {
+	s3 = new AWS.S3();
+	console.log(s3);
+
+	s3.listObjects({
+		Bucket: s3Bucket,
+		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
+		Prefix: '/meta',
+	}, function(err, data) {
+		if (err) console.log(err);
+		else {
+			console.log(data);
+			for (i = 0; i < data.Contents.length; i++) {
+				var geoEntry = {
+					'type': 'Feature',
+					'properties': {
+						'key': data.Contents[i].Key,
+						"popupContent": 
+						"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
+					},
+					'geometry': {
+						'type': 'Point',
+					}
+				};
+				s3.getObject({
+					Bucket: s3Bucket,
+					Key: data.Contents[i].Key,
+				}, function(err, data) {
+					if (err) console.log(err);
+					else {
+						console.log(data)
+						geoEntry.properties['LastModified'] = data.LastModified
+						var entry = Uint8ArrayToObject(data.Body);
+						geoEntry.properties['deviceId'] = entry.deviceId
+						geoEntry.properties['deviceModel'] = entry.deviceModel
+						geoEntry.geometry['coordinates'] = [entry.lastObject.lng, entry.lastObject.lat];
+						geoEntry.properties['popupContent'] += '<p>' +
+							'<b>LastModified: </b>' + data.LastModified + 
+							'<br><b>deviceId: </b>' + entry.deviceId + 
+							'<br><b>deviceModel: </b>' + entry.deviceModel +
+							'<br><b>Longitude: </b>' + entry.lastObject.lng +
+							'<br><b>Latitude</b>' + entry.lastObject.lat +
+							'</p>'
+						console.log(geoEntry);
+						L.geoJson(geoEntry, {
+							onEachFeature: onEachFeature
+						}).addTo(map);
+					}
+				});
+			}
+		}
+	});
+
+	var objectsList = s3.listObjects({
+		Bucket: s3Bucket,
+		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
+		Prefix: 'us-east',
+	}, function(err, data) {
+		if (err) console.log(err);
+		else {
+			console.log(data);
+			// var geoJsonObj = []
+			// for (i = 0; i < 10; i++) {
+			// 	var geoEntry = {
+			// 		'type': 'Feature',
+			// 		'properties': {
+			// 			'key': data.Contents[i].Key,
+			// 			"popupContent": 
+			// 			"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
+			// 		},
+			// 		'geometry': {
+			// 			'type': 'Point',
+			// 		}
+			// 	};
+			// 	s3.getObject({
+			// 		Bucket: s3Bucket,
+			// 		Key: data.Contents[i].Key,
+			// 	}, function(err, data) {
+			// 		if (err) console.log(err);
+			// 		else {
+			// 			var entry = Uint8ArrayToObject(data.Body);
+			// 			geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
+			// 			geoEntry.properties['timeStamp'] = entry.timeStamp;
+			// 			geoJsonObj.push(geoEntry);
+			// 			console.log(geoEntry);
+			// 			L.geoJson(geoEntry, {
+			// 				onEachFeature: onEachFeature
+			// 			}).addTo(map);
+			// 		}
+			// 	});
+			// }
+		}
+	});
+} // HandleS3Data
+
+function Uint8ArrayToObject(arr) {
+	return JSON.parse(String.fromCharCode.apply(null, arr))
+}
 
 //
 // Main module for map build and render..
