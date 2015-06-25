@@ -3,9 +3,9 @@ var s3;
 var s3Data;
 var s3Bucket = 'argotraq-data';
 var amazonAccID = '940653267411'; //  AWS account ID
-var identityPoolID = 'us-east-1:0aa587c3-9e10-4e1b-8484-7e85f38ca62f';
-var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_HeinrichArgoTraqAuth_Role';
-var roleArnUnAuth = 'arn:aws:iam::940653267411:role/Cognito_HeinrichArgoTraqUnauth_Role';
+var identityPoolID = 'us-east-1:d2737579-aaee-49c1-95c7-d78c0dd164ff';
+var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_ArgoTraqAuth_Role';
+var roleArnUnAuth = 'arn:aws:iam::940653267411:role/Cognito_ArgoTraqUnauth_Role';
 
 // Map build and display variables..
 var lat;
@@ -247,27 +247,78 @@ function HandleAmazonUnauth() {
 		else
 			console.log(err);
 	});
-	
+
 	AWS.config.apiVersions = {
-  		s3: '2006-03-01',
-  		// other service API versions
+		s3: '2006-03-01',
+		// other service API versions
 	};
-	
+
 	HandleS3Data();
 } // HandleAmazonUnauth
 
 function HandleS3Data() {
 	s3 = new AWS.S3();
 	console.log(s3);
-	
+
 	s3.listObjects({
-		Bucket: s3Bucket
+		Bucket: s3Bucket,
+		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
+		Prefix: '/meta',
 	}, function(err, data) {
-		if (err)
-			console.log(err);
-		else
+		if (err) console.log(err);
+		else {
 			console.log(data);
+			for (i = 0; i < data.Contents.length; i++) {
+				s3.getObject({
+					Bucket: s3Bucket,
+					Key: data.Contents[i].Key,
+				}, function(err, data) {
+					if (err) console.log(err);
+					else console.log(Uint8ArrayToObject(data.Body));
+				});
+			}
+		}
 	});
+
+	s3.listObjects({
+		Bucket: s3Bucket,
+		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
+		Prefix: 'us-east',
+	}, function(err, data) {
+		if (err) console.log(err);
+		else {
+			console.log(data);
+			var geoJson = []
+			for (i = 0; i < 10; i++) {
+				var geoEntry = {
+					'type': 'Feature',
+					'properties': {
+						'key': data.Contents[i].Key
+					},
+					'geometry': {
+						'type': 'POINT',
+					}
+				};
+				s3.getObject({
+					Bucket: s3Bucket,
+					Key: data.Contents[i].Key,
+				}, function(err, data) {
+					if (err) console.log(err);
+					else {
+						entry = Uint8ArrayToObject(data.Body);
+						geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
+						geoEntry.properties['timeStamp'] = entry.timeStamp;
+						geoJson.push(geoEntry);
+						console.log(geoEntry);
+					}
+				});
+			}
+		}
+	});
+} // HandleS3Data
+
+function Uint8ArrayToObject(arr) {
+	return JSON.parse(String.fromCharCode.apply(null, arr))
 }
 
 //
