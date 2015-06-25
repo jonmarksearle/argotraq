@@ -18,6 +18,29 @@ var theMapAddressesTemp = null;
 var callLogin = true;
 var googleEmail;
 
+//
+// Setup Leaflet Map
+//
+
+/* Setup map view */
+var map = L.map('map').setView([-37.813611, 144.963056], 10)
+
+
+/* Add an Map tile layer. */
+L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
+	maxZoom: 18,
+	attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+		'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+		'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+	id: 'examples.map-i875mjb7'
+}).addTo(map);
+
+function onEachFeature(feature, layer) {
+    // does this feature have a property named popupContent?
+    if (feature.properties && feature.properties.popupContent) {
+        layer.bindPopup(feature.properties.popupContent);
+    }
+}
 
 //
 // Google Authorise First Go Start
@@ -269,34 +292,15 @@ function HandleS3Data() {
 		else {
 			console.log(data);
 			for (i = 0; i < data.Contents.length; i++) {
-				s3.getObject({
-					Bucket: s3Bucket,
-					Key: data.Contents[i].Key,
-				}, function(err, data) {
-					if (err) console.log(err);
-					else console.log(Uint8ArrayToObject(data.Body));
-				});
-			}
-		}
-	});
-
-	s3.listObjects({
-		Bucket: s3Bucket,
-		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
-		Prefix: 'us-east',
-	}, function(err, data) {
-		if (err) console.log(err);
-		else {
-			console.log(data);
-			var geoJson = []
-			for (i = 0; i < 10; i++) {
 				var geoEntry = {
 					'type': 'Feature',
 					'properties': {
-						'key': data.Contents[i].Key
+						'key': data.Contents[i].Key,
+						"popupContent": 
+						"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
 					},
 					'geometry': {
-						'type': 'POINT',
+						'type': 'Point',
 					}
 				};
 				s3.getObject({
@@ -305,14 +309,67 @@ function HandleS3Data() {
 				}, function(err, data) {
 					if (err) console.log(err);
 					else {
-						entry = Uint8ArrayToObject(data.Body);
-						geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
-						geoEntry.properties['timeStamp'] = entry.timeStamp;
-						geoJson.push(geoEntry);
+						console.log(data)
+						geoEntry.properties['LastModified'] = data.LastModified
+						var entry = Uint8ArrayToObject(data.Body);
+						geoEntry.properties['deviceId'] = entry.deviceId
+						geoEntry.properties['deviceModel'] = entry.deviceModel
+						geoEntry.geometry['coordinates'] = [entry.lastObject.lng, entry.lastObject.lat];
+						geoEntry.properties['popupContent'] += '<p>' +
+							'<b>LastModified: </b>' + data.LastModified + 
+							'<br><b>deviceId: </b>' + entry.deviceId + 
+							'<br><b>deviceModel: </b>' + entry.deviceModel +
+							'<br><b>Longitude: </b>' + entry.lastObject.lng +
+							'<br><b>Latitude</b>' + entry.lastObject.lat +
+							'</p>'
 						console.log(geoEntry);
+						L.geoJson(geoEntry, {
+							onEachFeature: onEachFeature
+						}).addTo(map);
 					}
 				});
 			}
+		}
+	});
+
+	var objectsList = s3.listObjects({
+		Bucket: s3Bucket,
+		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
+		Prefix: 'us-east',
+	}, function(err, data) {
+		if (err) console.log(err);
+		else {
+			console.log(data);
+			// var geoJsonObj = []
+			// for (i = 0; i < 10; i++) {
+			// 	var geoEntry = {
+			// 		'type': 'Feature',
+			// 		'properties': {
+			// 			'key': data.Contents[i].Key,
+			// 			"popupContent": 
+			// 			"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
+			// 		},
+			// 		'geometry': {
+			// 			'type': 'Point',
+			// 		}
+			// 	};
+			// 	s3.getObject({
+			// 		Bucket: s3Bucket,
+			// 		Key: data.Contents[i].Key,
+			// 	}, function(err, data) {
+			// 		if (err) console.log(err);
+			// 		else {
+			// 			var entry = Uint8ArrayToObject(data.Body);
+			// 			geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
+			// 			geoEntry.properties['timeStamp'] = entry.timeStamp;
+			// 			geoJsonObj.push(geoEntry);
+			// 			console.log(geoEntry);
+			// 			L.geoJson(geoEntry, {
+			// 				onEachFeature: onEachFeature
+			// 			}).addTo(map);
+			// 		}
+			// 	});
+			// }
 		}
 	});
 } // HandleS3Data

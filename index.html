@@ -1,42 +1,42 @@
 <!DOCTYPE html>
 <html>
-    <head>
 
-        <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-        
-        <link rel="stylesheet" type= "text/css" href="css/ArgoTraqMap.css">
+<head>
 
-        <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.35.min.js"></script>
-        <script src="https://apis.google.com/js/client.js"></script>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 
-        <script type="text/javascript" src="js/ArgoTraq.js"></script>
-        
-    </head>
+    <link rel="stylesheet" type="text/css" href="css/ArgoTraqMap.css">
 
-    <body>
-        <span class="SignInText" id = "msgSignIn"></span> <br/>
-        
-        <button id="acrSignIn" onClick="HandleGoogleLogin()"> Sign In via Google </button>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.35.min.js"></script>
+    <script src="https://apis.google.com/js/client.js"></script>
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="css/leaflet.css" />
+</head>
 
-        <button id="acrBypassSignIn"  onClick="HandleGoogleLogin2()"> Go Anonymous </button>
-        
-        <label class="BannerHeaderText"> Current Location Tracker </label>
-        <br/>
-        
-        <div class="BannerMessageText" id="divLoadingMsg">Page State: User Not Logged In..</div>
+<body>
+    <span class="SignInText" id="msgSignIn"></span>
+    <br/>
 
-        <!-- Map -->
-        <div id="map"></div>
+    <button id="acrSignIn" onClick="HandleGoogleLogin()"> Sign In via Google </button>
 
-        <div id="content"></div>
-        <span id="cogUsers" class="WMSelectionMessage">
+    <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Go Anonymous </button>
+
+    <label class="BannerHeaderText"> Current Location Tracker </label>
+    <br/>
+
+    <div class="BannerMessageText" id="divLoadingMsg">Page State: User Not Logged In..</div>
+
+    <!-- Map -->
+    <div id="map" style="width: 600px; height: 400px;"></div>
+
+    <div id="content"></div>
+    <span id="cogUsers" class="WMSelectionMessage">
             <span id="msgInfoList">All Users (AWS cognito IDs):</span>
-	      <select size=3 id="cogUserSel" style="background-color: #E9F7FF; border: #2E5CE6 solid 1px;"></select>
-        </span>
+    <select size=3 id="cogUserSel" style="background-color: #E9F7FF; border: #2E5CE6 solid 1px;"></select>
+    </span>
 
-    </body>
- </html>
+    <script src="lib/leaflet.js"></script>
+    <script type="text/javascript" src="js/ArgoTraq.js"></script>
+</body>
 
-
-
-
+</html>
