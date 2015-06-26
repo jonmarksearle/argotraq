@@ -28,7 +28,7 @@ var map = L.map('map').setView([-37.813611, 144.963056], 10)
 
 /* Add an Map tile layer. */
 L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
-	maxZoom: 18,
+	maxZoom: 25,
 	attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
 		'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
 		'Imagery © <a href="http://mapbox.com">Mapbox</a>',
@@ -36,11 +36,25 @@ L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 function onEachFeature(feature, layer) {
-    // does this feature have a property named popupContent?
-    if (feature.properties && feature.properties.popupContent) {
-        layer.bindPopup(feature.properties.popupContent);
-    }
+	// does this feature have a property named popupContent?
+	if (feature.properties && feature.properties.popupContent) {
+		layer.bindPopup(feature.properties.popupContent);
+	}
 }
+
+// var testline = {
+// 	'type': 'Feature',
+// 	'properties': {
+// 		'deviceId': "123123123"
+// 	},
+// 	'geometry': {
+// 		'type': 'LineString',
+// 		'coordinates': [[145.1044412, -38.0301353, "asdf"], [145, -38, "asdf"]],
+// 		'time': ["asdf", "asdf"]
+// 	}
+// }
+
+// L.geoJson(testline).addTo(map);
 
 //
 // Google Authorise First Go Start
@@ -271,10 +285,10 @@ function HandleAmazonUnauth() {
 			console.log(err);
 	});
 
-	AWS.config.apiVersions = {
-		s3: '2006-03-01',
-		// other service API versions
-	};
+	// AWS.config.apiVersions = {
+	// 	s3: '2006-03-01',
+	// 	// other service API versions
+	// };
 
 	HandleS3Data();
 } // HandleAmazonUnauth
@@ -284,98 +298,232 @@ function HandleS3Data() {
 	console.log(s3);
 
 	s3.listObjects({
-		Bucket: s3Bucket,
-		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
-		Prefix: '/meta',
+		Bucket: 'argotraq-data',
+		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/meta'
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
 			console.log(data);
-			for (i = 0; i < data.Contents.length; i++) {
-				var geoEntry = {
-					'type': 'Feature',
-					'properties': {
-						'key': data.Contents[i].Key,
-						"popupContent": 
-						"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
-					},
-					'geometry': {
-						'type': 'Point',
-					}
-				};
-				s3.getObject({
-					Bucket: s3Bucket,
-					Key: data.Contents[i].Key,
-				}, function(err, data) {
-					if (err) console.log(err);
-					else {
-						console.log(data)
-						geoEntry.properties['LastModified'] = data.LastModified
-						var entry = Uint8ArrayToObject(data.Body);
-						geoEntry.properties['deviceId'] = entry.deviceId
-						geoEntry.properties['deviceModel'] = entry.deviceModel
-						geoEntry.geometry['coordinates'] = [entry.lastObject.lng, entry.lastObject.lat];
-						geoEntry.properties['popupContent'] += '<p>' +
-							'<b>LastModified: </b>' + data.LastModified + 
-							'<br><b>deviceId: </b>' + entry.deviceId + 
-							'<br><b>deviceModel: </b>' + entry.deviceModel +
-							'<br><b>Longitude: </b>' + entry.lastObject.lng +
-							'<br><b>Latitude</b>' + entry.lastObject.lat +
-							'</p>'
-						console.log(geoEntry);
-						L.geoJson(geoEntry, {
-							onEachFeature: onEachFeature
-						}).addTo(map);
-					}
-				});
-			}
+			//showMetaObjects(data);
 		}
 	});
 
-	var objectsList = s3.listObjects({
+	s3.listObjects({
 		Bucket: s3Bucket,
-		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
-		Prefix: 'us-east',
+		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/1',
+	}, function(err, data) {
+		if (err) console.log(err);
+		else {
+			// console.log(data);
+			//showDataObjects(data);
+		}
+	});
+
+	s3.listObjects({
+		Bucket: s3Bucket,
+		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/1',
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
 			console.log(data);
-			// var geoJsonObj = []
-			// for (i = 0; i < 10; i++) {
-			// 	var geoEntry = {
-			// 		'type': 'Feature',
-			// 		'properties': {
-			// 			'key': data.Contents[i].Key,
-			// 			"popupContent": 
-			// 			"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
-			// 		},
-			// 		'geometry': {
-			// 			'type': 'Point',
-			// 		}
-			// 	};
-			// 	s3.getObject({
-			// 		Bucket: s3Bucket,
-			// 		Key: data.Contents[i].Key,
-			// 	}, function(err, data) {
-			// 		if (err) console.log(err);
-			// 		else {
-			// 			var entry = Uint8ArrayToObject(data.Body);
-			// 			geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
-			// 			geoEntry.properties['timeStamp'] = entry.timeStamp;
-			// 			geoJsonObj.push(geoEntry);
-			// 			console.log(geoEntry);
-			// 			L.geoJson(geoEntry, {
-			// 				onEachFeature: onEachFeature
-			// 			}).addTo(map);
-			// 		}
-			// 	});
-			// }
+			showDataObjectsStrings(data);
 		}
 	});
+
 } // HandleS3Data
 
 function Uint8ArrayToObject(arr) {
 	return JSON.parse(String.fromCharCode.apply(null, arr))
+}
+
+function showMetaObjects(data) {
+	for (i = 0; i < data.Contents.length; i++) {
+		var geoEntry = {
+			'type': 'Feature',
+			'properties': {
+				'key': data.Contents[i].Key,
+				"popupContent": "<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
+			},
+			'geometry': {
+				'type': 'Point',
+			}
+		};
+		s3.getObject({
+			Bucket: s3Bucket,
+			Key: data.Contents[i].Key,
+		}, function(err, data) {
+			if (err) console.log(err);
+			else {
+				console.log(data);
+				geoEntry.properties['LastModified'] = data.LastModified;
+				var entry = Uint8ArrayToObject(data.Body);
+				console.log(entry);
+				geoEntry.properties['deviceId'] = entry.deviceId;
+				geoEntry.properties['deviceModel'] = entry.deviceModel;
+				geoEntry.geometry['coordinates'] = [entry.lastObject.lng, entry.lastObject.lat];
+				geoEntry.properties['popupContent'] += '<p>' +
+					'<b>LastModified: </b>' + data.LastModified +
+					'<br><b>deviceId: </b>' + entry.deviceId +
+					'<br><b>deviceModel: </b>' + entry.deviceModel +
+					'<br><b>Longitude: </b>' + entry.lastObject.lng +
+					'<br><b>Latitude</b>' + entry.lastObject.lat +
+					'</p>';
+				console.log(geoEntry);
+				L.geoJson(geoEntry, {
+					onEachFeature: onEachFeature
+				}).addTo(map);
+			}
+		});
+	}
+} // showMetaObjects
+
+function showDataObjects(data) {
+	// var geoJsonObj = []
+	for (i = 0; i < data.Contents.length; i++) {
+		var key = data.Contents[i].Key.split('/')[1]
+		var geoEntry = {
+			'type': 'Feature',
+			'properties': {
+				'key': key,
+				"popupContent": "<p><b>Key: </b>" + key + "</p>"
+			},
+			'geometry': {
+				'type': 'Point',
+			}
+		};
+		s3.getObject({
+			Bucket: s3Bucket,
+			Key: data.Contents[i].Key,
+		}, function(err, data) {
+			if (err) console.log(err);
+			else {
+				console.log(data);
+				var entry = Uint8ArrayToObject(data.Body);
+				console.log(entry);
+				geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
+				geoEntry.properties['timeStamp'] = entry.timeStamp;
+				// geoJsonObj.push(geoEntry);
+				console.log(geoEntry);
+				L.geoJson(geoEntry, {
+					onEachFeature: onEachFeature
+				}).addTo(map);
+			}
+		});
+	}
+} // showDataObjects
+
+function showDataObjectsStrings(data) {
+	// save total geoJson object
+	var geoJsonObj = [];
+	// save a list with the deviceIds 
+	var deviceIds = [];
+	for (var i = 0; i < 100 /*data.Contents.length*/ ; i++) {
+		var key = data.Contents[i].Key.split('/')[1]
+			//console.log(key);
+		var deviceId = key.split("-")[1]
+			//console.log(deviceId);
+
+		if (deviceIds.indexOf(deviceId) != -1) {
+			// save coordinates of the objects to existing linestring
+			// linestring needs to be ordered by timeStamp
+			var deviceIndex;
+			for (var j = 0; j < geoJsonObj.length; j++) {
+				//console.log(geoJsonObj[j]);
+				if (geoJsonObj[j].properties.deviceId == deviceId) deviceIndex = j;
+			}
+
+			s3.getObject({
+				Bucket: s3Bucket,
+				Key: data.Contents[i].Key,
+				//IfModifiedSince: '2015-06-24T03:55:27.000Z', 
+				/* is yyyy-MM-dd'T'HH:mm:ss'Z' but should actually be EEE, dd MMM yyyy HH:mm:ss z, 
+				but bug according to http://stackoverflow.com/questions/27190654/awss3getobjectrequest-ifmodifiedsince-not-working 
+				yyyy-MM-dd'T'HH:mm:ss'Z' retrieving all data although data specified.
+				Go in initial state with for-loop retrieving first 100 objects.
+				*/
+			}, function(err, data) {
+				if (err) console.log(err);
+				else {
+					//console.log(data);
+					var entry = Uint8ArrayToObject(data.Body);
+					// insert new coordinates into linestring based on the timestamp/keep linestring ordered in time
+					var coordPosCounter = 0;
+					while ((new Date(entry.timeStamp).getTime())<(new Date(geoJsonObj[deviceIndex].geometry.coordinates[coordPosCounter][2]).getTime())) {
+						coordPosCounter += 1;
+					}
+					var lineStringEntry = [entry.lng, entry.lat, entry.timeStamp];
+					console.log(geoJsonObj[deviceIndex].geometry['coordinates']);
+					geoJsonObj[deviceIndex].geometry['coordinates'].splice(coordPosCounter,0,lineStringEntry);
+					//geoJsonObj[deviceIndex].geometry.coordinates.push([entry.lng, entry.lat, entry.timeStamp])
+						//lineFeature.geometry['time'] = [entry.timeStamp];
+						// geoJsonObj.push(geoEntry);
+					//console.log(geoJsonObj[deviceIndex]);
+					L.geoJson(lineFeature).addTo(map);
+				}
+			});
+
+		}
+		else {
+			// add deviceId to deviceIds
+			// create a new linestring and add first coordinate
+			deviceIds.push(deviceId);
+			//console.log(deviceIds);
+			var lineFeature = {
+				'type': 'Feature',
+				'properties': {
+					'deviceId': deviceId
+				},
+				'geometry': {
+					'type': 'LineString',
+				}
+			}
+
+			geoJsonObj.push(lineFeature);
+
+			s3.getObject({
+				Bucket: s3Bucket,
+				Key: data.Contents[i].Key,
+				//IfModifiedSince: '2015-06-24T03:55:27.000Z', 
+				/* is yyyy-MM-dd'T'HH:mm:ss'Z' but should actually be EEE, dd MMM yyyy HH:mm:ss z, 
+				but bug according to http://stackoverflow.com/questions/27190654/awss3getobjectrequest-ifmodifiedsince-not-working 
+				yyyy-MM-dd'T'HH:mm:ss'Z' retrieving all data although data specified.
+				Go in initial state with for-loop retrieving first 100 objects.
+				*/
+			}, function(err, data) {
+				if (err) console.log(err);
+				else {
+					console.log(data);
+					var entry = Uint8ArrayToObject(data.Body);
+					console.log(entry);
+					lineFeature.geometry['coordinates'] = [
+						[entry.lng, entry.lat, entry.timeStamp]
+					];
+					//lineFeature.geometry['time'] = [entry.timeStamp];
+					// geoJsonObj.push(geoEntry);
+					console.log(lineFeature);
+					//L.geoJson(lineFeature).addTo(map);
+				}
+			});
+
+		}
+
+
+		// s3.getObject({
+		// 	Bucket: s3Bucket,
+		// 	Key: data.Contents[i].Key,
+		// 	//IfModifiedSince: '2015-06-24T03:55:27.000Z', 
+		// 	/* is yyyy-MM-dd'T'HH:mm:ss'Z' but should actually be EEE, dd MMM yyyy HH:mm:ss z, 
+		// 	but bug according to http://stackoverflow.com/questions/27190654/awss3getobjectrequest-ifmodifiedsince-not-working 
+		// 	yyyy-MM-dd'T'HH:mm:ss'Z' retrieving all data although data specified.
+		// 	Go in initial state with for-loop retrieving first 100 objects.
+		// 	*/
+		// }, function(err, data) {
+		// 	if (err) console.log(err);
+		// 	else {
+		// 		console.log(data)
+		// 	}
+		// });
+	}
 }
 
 //
