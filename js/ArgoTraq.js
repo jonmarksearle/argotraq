@@ -28,7 +28,7 @@ var map = L.map('map').setView([-37.813611, 144.963056], 10)
 
 /* Add an Map tile layer. */
 L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
-	maxZoom: 18,
+	maxZoom: 25,
 	attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
 		'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
 		'Imagery © <a href="http://mapbox.com">Mapbox</a>',
@@ -36,11 +36,25 @@ L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 function onEachFeature(feature, layer) {
-    // does this feature have a property named popupContent?
-    if (feature.properties && feature.properties.popupContent) {
-        layer.bindPopup(feature.properties.popupContent);
-    }
+	// does this feature have a property named popupContent?
+	if (feature.properties && feature.properties.popupContent) {
+		layer.bindPopup(feature.properties.popupContent);
+	}
 }
+
+// var testline = {
+// 	'type': 'Feature',
+// 	'properties': {
+// 		'deviceId': "123123123"
+// 	},
+// 	'geometry': {
+// 		'type': 'LineString',
+// 		'coordinates': [[145.1044412, -38.0301353, "asdf"], [145, -38, "asdf"]],
+// 		'time': ["asdf", "asdf"]
+// 	}
+// }
+
+// L.geoJson(testline).addTo(map);
 
 //
 // Google Authorise First Go Start
@@ -271,111 +285,235 @@ function HandleAmazonUnauth() {
 			console.log(err);
 	});
 
-	AWS.config.apiVersions = {
-		s3: '2006-03-01',
-		// other service API versions
-	};
+	// AWS.config.apiVersions = {
+	// 	s3: '2006-03-01',
+	// 	// other service API versions
+	// };
 
-	HandleS3Data();
+	HandleS3MetaData();
 } // HandleAmazonUnauth
 
-function HandleS3Data() {
+var geoJsonDevices = [];
+var geoJsonTrajectories = [];
+var deviceIds = [];
+
+function HandleS3MetaData() {
 	s3 = new AWS.S3();
 	console.log(s3);
 
+	// s3.listObjects({
+	// 	Bucket: s3Bucket,
+	// 	Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/1',
+	// }, function(err, data) {
+	// 	if (err) console.log(err);
+	// 	else {
+	// 		// console.log(data);
+	// 		//showDataObjects(data);
+	// 	}
+	// });
+
 	s3.listObjects({
-		Bucket: s3Bucket,
-		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
-		Prefix: '/meta',
+		Bucket: 'argotraq-data',
+		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/meta'
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
 			console.log(data);
-			for (i = 0; i < data.Contents.length; i++) {
+			showMetaObjects(data);
+		}
+	});
+
+} // HandleS3Data
+
+function showMetaObjects(data) {
+	//var geoJsonDevices = [];
+	var counterDevices = data.Contents.length;
+	for (var i = 0; i < data.Contents.length; i++) {
+		s3.getObject({
+			Bucket: s3Bucket,
+			Key: data.Contents[i].Key,
+		}, function(err, data) {
+			if (err) console.log(err);
+			else {
+				console.log(data);
 				var geoEntry = {
 					'type': 'Feature',
-					'properties': {
-						'key': data.Contents[i].Key,
-						"popupContent": 
-						"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
-					},
+					'properties': {},
 					'geometry': {
 						'type': 'Point',
 					}
 				};
-				s3.getObject({
-					Bucket: s3Bucket,
-					Key: data.Contents[i].Key,
-				}, function(err, data) {
-					if (err) console.log(err);
-					else {
-						console.log(data)
-						geoEntry.properties['LastModified'] = data.LastModified
-						var entry = Uint8ArrayToObject(data.Body);
-						geoEntry.properties['deviceId'] = entry.deviceId
-						geoEntry.properties['deviceModel'] = entry.deviceModel
-						geoEntry.geometry['coordinates'] = [entry.lastObject.lng, entry.lastObject.lat];
-						geoEntry.properties['popupContent'] += '<p>' +
-							'<b>LastModified: </b>' + data.LastModified + 
-							'<br><b>deviceId: </b>' + entry.deviceId + 
-							'<br><b>deviceModel: </b>' + entry.deviceModel +
-							'<br><b>Longitude: </b>' + entry.lastObject.lng +
-							'<br><b>Latitude</b>' + entry.lastObject.lat +
-							'</p>'
-						console.log(geoEntry);
-						L.geoJson(geoEntry, {
-							onEachFeature: onEachFeature
-						}).addTo(map);
-					}
-				});
+				var entry = Uint8ArrayToObject(data.Body);
+				console.log(entry);
+				geoEntry.properties['LastModified'] = data.LastModified;
+				geoEntry.properties['deviceId'] = entry.deviceId;
+				geoEntry.properties['deviceModel'] = entry.deviceModel;
+				geoEntry.geometry['coordinates'] = [entry.lastObject.lng, entry.lastObject.lat];
+				geoEntry.properties['popupContent'] = '<p>' +
+					'<b>deviceId: </b>' + entry.deviceId +
+					'<br><b>LastModified: </b>' + data.LastModified +
+					'<br><b>deviceModel: </b>' + entry.deviceModel +
+					'<br><b>Longitude: </b>' + entry.lastObject.lng +
+					'<br><b>Latitude</b>' + entry.lastObject.lat +
+					'</p>';
+				console.log(geoEntry);
+				geoJsonDevices.push(geoEntry);
+				// count callbacks. Continue after last callback
+				counterDevices = counterDevices - 1;
+				if (counterDevices == 0) {
+					console.log(counterDevices);
+					HandleS3Data();
+				};
+			};
+
+		});
+	}
+
+} // showMetaObjects
+
+function HandleS3Data() {
+	//show devices on Leaflet map
+	L.geoJson(geoJsonDevices, {
+		onEachFeature: onEachFeature
+	}).addTo(map);
+
+	//fill deviceIds-array with the deviceIds
+	for (var i = 0; i < geoJsonDevices.length; i++) {
+		deviceIds.push(geoJsonDevices[i].properties['deviceId']);
+	}
+	console.log(deviceIds);
+	console.log(deviceIds.indexOf(geoJsonDevices[1].properties['deviceId']))
+
+	//prepare the geoJson Object with the deviceIds
+	for (var j = 0; j < deviceIds.length; j++) {
+		var lineFeature = {
+			'type': 'Feature',
+			'properties': {
+				'deviceId': deviceIds[j],
+				'popupContent': '<p><b>deviceId: </b>' + deviceIds[j] + '</p>'
+			},
+			'geometry': {
+				'type': 'LineString',
+				'coordinates': []
 			}
 		}
-	});
+		geoJsonTrajectories.push(lineFeature);
+	}
+	console.log(geoJsonTrajectories);
 
-	var objectsList = s3.listObjects({
+	s3.listObjects({
 		Bucket: s3Bucket,
-		Delimiter: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14',
-		Prefix: 'us-east',
+		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/1',
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
 			console.log(data);
-			// var geoJsonObj = []
-			// for (i = 0; i < 10; i++) {
-			// 	var geoEntry = {
-			// 		'type': 'Feature',
-			// 		'properties': {
-			// 			'key': data.Contents[i].Key,
-			// 			"popupContent": 
-			// 			"<p><b>Key: </b>" + data.Contents[i].Key + "</p>"
-			// 		},
-			// 		'geometry': {
-			// 			'type': 'Point',
-			// 		}
-			// 	};
-			// 	s3.getObject({
-			// 		Bucket: s3Bucket,
-			// 		Key: data.Contents[i].Key,
-			// 	}, function(err, data) {
-			// 		if (err) console.log(err);
-			// 		else {
-			// 			var entry = Uint8ArrayToObject(data.Body);
-			// 			geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
-			// 			geoEntry.properties['timeStamp'] = entry.timeStamp;
-			// 			geoJsonObj.push(geoEntry);
-			// 			console.log(geoEntry);
-			// 			L.geoJson(geoEntry, {
-			// 				onEachFeature: onEachFeature
-			// 			}).addTo(map);
-			// 		}
-			// 	});
-			// }
+			showDataTrajectories(data);
 		}
 	});
-} // HandleS3Data
+}
+
+function showDataTrajectories(inData) {
+	// save total geoJson object
+	//TODO: error, because entries of geoJsonObj are created in callback 
+	//TODO: preconfigure geoJsonObj with meta object points and then delete if-else-block
+
+	var counterDataObjects = 100;
+	var deviceIndices = []
+	for (var i = 0; i < 100 /*data.Contents.length*/ ; i++) {
+		var key = inData.Contents[i].Key.split('/')[1]
+		//console.log(key);
+		var deviceId = key.split("-")[1]
+		//console.log(deviceId);
+
+		// save coordinates of the objects to existing linestring
+		// linestring needs to be ordered by timeStamp
+		var deviceIndex;
+		for (var j = 0; j < geoJsonTrajectories.length; j++) {
+			//console.log(geoJsonObj[j]);
+			if (geoJsonTrajectories[j].properties.deviceId == deviceId) deviceIndex = j;
+		}
+		deviceIndices[i] = deviceIndex;
+		s3.getObject({
+			Bucket: s3Bucket,
+			Key: inData.Contents[i].Key,
+			ResponseCacheControl: i.toString(),
+		}, function(err, data) {
+			if (err) console.log(err);
+			else {
+				console.log(data);
+				var entry = Uint8ArrayToObject(data.Body);
+				// save coordinates to appropriate device
+				geoJsonTrajectories[deviceIndices[data.CacheControl]].geometry.coordinates.push([entry.lng, entry.lat, entry.timeStamp])
+				counterDataObjects -= 1;
+				if (counterDataObjects == 0) {
+					console.log(counterDataObjects);
+					HandleS3DataVisualization();
+				};
+			}
+		});
+	}
+} //showDataTrajectories
+
+function HandleS3DataVisualization() {
+	console.log("data visualization");
+	console.log(geoJsonTrajectories);
+
+	//sort the lineStrings by date
+	for (var k = 0; k < geoJsonTrajectories.length; k++) {
+		geoJsonTrajectories[k].geometry['coordinates'].sort(function(a, b) {
+			return a[2] - b[2]
+		});
+	}
+	L.geoJson(geoJsonTrajectories).addTo(map);
+}
+
+// function showDataObjects(data) {
+// 	// var geoJsonObj = []
+// 	for (i = 0; i < data.Contents.length; i++) {
+// 		var key = data.Contents[i].Key.split('/')[1]
+// 		var geoEntry = {
+// 			'type': 'Feature',
+// 			'properties': {
+// 				'key': key,
+// 				"popupContent": "<p><b>Key: </b>" + key + "</p>"
+// 			},
+// 			'geometry': {
+// 				'type': 'Point',
+// 			}
+// 		};
+// 		s3.getObject({
+// 			Bucket: s3Bucket,
+// 			Key: data.Contents[i].Key,
+// 		}, function(err, data) {
+// 			if (err) console.log(err);
+// 			else {
+// 				console.log(data);
+// 				var entry = Uint8ArrayToObject(data.Body);
+// 				console.log(entry);
+// 				geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
+// 				geoEntry.properties['timeStamp'] = entry.timeStamp;
+// 				// geoJsonObj.push(geoEntry);
+// 				console.log(geoEntry);
+// 				L.geoJson(geoEntry, {
+// 					onEachFeature: onEachFeature
+// 				}).addTo(map);
+// 			}
+// 		});
+// 	}
+// } // showDataObjects
 
 function Uint8ArrayToObject(arr) {
 	return JSON.parse(String.fromCharCode.apply(null, arr))
+}
+
+function sleep(milliseconds) {
+	var start = new Date().getTime();
+	for (var i = 0; i < 1e7; i++) {
+		if ((new Date().getTime() - start) > milliseconds) {
+			break;
+		}
+	}
 }
 
 //
