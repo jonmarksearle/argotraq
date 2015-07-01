@@ -24,8 +24,10 @@ var geoJsonTrajectories = [];
 var geoJsonLayer;
 var deviceIds = [];
 //var hours24 = 86400000;
-var displayHours;
+var displayedLastHours;
+var displayedTimePoint = new Date();
 var hoursToMillis = 3600000;
+var initialRun = false;
 
 //
 // Setup Leaflet Map
@@ -100,6 +102,7 @@ var scopes = 'https://www.googleapis.com/auth/plus.login';
 //
 
 function HandleGoogleLogin() {
+	initialRun = true;
 	gapi.client.setApiKey(apiKey);
 	window.setTimeout(checkAuth, 1);
 }
@@ -183,6 +186,7 @@ function makeApiCall() {
 
 
 function HandleGoogleLogin2() {
+	initialRun = true;
 	console.log("anonymous");
 	gapi.client.setApiKey(apiKey);
 	window.setTimeout(checkAuth2, 1);
@@ -305,9 +309,9 @@ function HandleAmazonUnauth() {
 function HandleS3MetaData() {
 	s3 = new AWS.S3();
 	console.log(s3);
-	if (!displayHours) {
+	if (!displayedLastHours) {
 		console.log("set displayHours to default 24hours");
-		displayHours = hoursToMillis* 24 /*hours24*/;
+		displayedLastHours = hoursToMillis * 24 /*hours24*/ ;
 	}
 	s3.listObjects({
 		Bucket: 'argotraq-data',
@@ -398,7 +402,7 @@ function HandleS3Data() {
 	}
 	console.log(geoJsonTrajectories);
 	console.log(getApproxHours());
-	
+
 	s3.listObjects({
 		Bucket: s3Bucket,
 		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/' + getApproxHours(),
@@ -425,7 +429,7 @@ function showDataTrajectories(inData) {
 		var deviceId = key.split("-")[1];
 		//console.log(deviceId);
 		// refine selection of exactly last 24 hours
-		if (Number(timeMillis) > (new Date().getTime() - displayHours)) {
+		if ((Number(timeMillis) > (displayedTimePoint.getTime() - displayedLastHours)) && (Number(timeMillis) <= displayedTimePoint.getTime())) {
 			// save coordinates of the objects to existing linestring
 			// linestring needs to be ordered by timeStamp
 			var deviceIndex;
@@ -452,9 +456,10 @@ function showDataTrajectories(inData) {
 					};
 				}
 			});
-		} else {
+		}
+		else {
 			counterDataObjects -= 1;
-		} 
+		}
 	}
 } //showDataTrajectories
 
@@ -474,7 +479,7 @@ function HandleS3DataVisualization() {
 
 function getApproxHours() {
 	var currentTime = (new Date().getTime()).toString();
-	var pastTime = (new Date().getTime() - displayHours).toString();
+	var pastTime = (new Date().getTime() - displayedLastHours).toString();
 	var timestring = "";
 	var digitcounter = 0;
 	var allequal = true;
@@ -509,10 +514,56 @@ function sleep(milliseconds) {
 //
 
 function updateSliderInput(val) {
-	displayHours = val * hoursToMillis;
-	console.log("removeLayer");
-	geoJsonLayer.clearLayers();
-	HandleS3MetaData();
+	displayedLastHours = val * hoursToMillis;
+}
+
+$('#datepicker').val(getDateYMD(new Date()));
+$('#datepicker').attr('min', getDateYMD(new Date(1)));
+$('#datepicker').attr('max', getDateYMD(new Date()));
+
+function updateDateInput(val) {
+	console.log("new Date:: " + val);
+	var displayedTimePointMillis = new Date(val).getTime() + getTimeMillis();
+	displayedTimePoint = new Date(displayedTimePointMillis);
+	console.log(displayedTimePoint);
+}
+
+function adjustDateTime() {
+	if (!initialRun) {
+		window.alert("Please run 'Sign In via Google' or 'Go Anonymous' first.");
+	}
+	else {
+		console.log("removeLayer");
+		geoJsonLayer.clearLayers();
+		deviceIds = [];
+		geoJsonDevices = [];
+		geoJsonTrajectories = [];
+		console.log("display data with new properties");
+		HandleS3MetaData();
+	};
+}
+
+function getDateYMD(val) {
+	var dd = val.getDate();
+	var mm = val.getMonth() + 1; //January is 0!
+
+	var yyyy = val.getFullYear();
+	if (dd < 10) {
+		dd = '0' + dd
+	}
+	if (mm < 10) {
+		mm = '0' + mm
+	}
+	return yyyy + "-" + mm + "-" + dd;
+}
+
+function getTimeMillis() {
+	var currTime = new Date;
+	var hh = currTime.getHours() * 60 * 60 * 1000;
+	var mm = currTime.getMinutes() * 60 * 1000;
+	var ss = currTime.getSeconds() * 1000;
+	console.log(hh + " " + mm + " " + ss);
+	return hh + mm + ss;
 }
 
 

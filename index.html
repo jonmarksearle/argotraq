@@ -5,7 +5,7 @@
 
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 
-    <link rel="stylesheet" type="text/css" href="css/ArgoTraqMap.css">
+    <link rel="stylesheet" type="text/css" href="css/ArgoTraq.css">
 
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.35.min.js"></script>
     <script src="https://apis.google.com/js/client.js"></script>
@@ -31,7 +31,13 @@
         <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24" onchange="updateSliderInput(this.value);">
 
         <output name="timesliderOutput" for="timesliderInput">24</output>
+
+        <input id="datepicker" type="date" onchange="updateDateInput(this.value);" />
     </form>
+    <button onClick="adjustDateTime();">Submit</button>
+
+    <!-- Datepicker -->
+
     <!-- Map -->
     <div id="map" style="width: 600px; height: 400px;"></div>
 
@@ -42,6 +48,7 @@
     </span>
 
     <script src="lib/leaflet/leaflet.js"></script>
+    <script type="text/javascript" src="lib/jquery-1.11.3.min.js"></script>
     <script type="text/javascript" src="js/ArgoTraq.js"></script>
 </body>
 
