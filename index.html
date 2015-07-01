@@ -23,29 +23,24 @@
     -->
     <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Get Started </button>
     
-    <div class="BannerMessageText" id="divLoadingMsg">User Not Logged In..</div> <br/>
+    <div class="BannerMessageText" id="divLoadingMsg">User Not Logged In..</div>
 
     <br/>
     <label class="BannerHeaderText"></label>
     <br/>
 
-    <!-- Timeslider -->
+    <!-- Timeslider -->    <!-- Datepicker -->
     <form oninput="timesliderOutput.value=timeslider.value">
 
-        <div> Tracq the last <output name="timesliderOutput" for="timesliderInput">24</output> hours to 
+        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24">
+        <output name="timesliderOutput" for="timesliderInput">24</output> hours to 
 
         <input id="datepicker" type="date" > 
         <input id="timepicker" type="time" > <br/>
 
-        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24"> <!--  onchange="updateSliderInput(this.value);"> -->
-        <button onClick="adjustDateTime();">Update</button>
-
-        </div><br/>
-
+         <!--  onchange="updateSliderInput(this.value);"> -->
     </form>
-    
-
-    <!-- Datepicker -->
+    <button onClick="adjustDateTime();">Update</button>
 
     <!-- Map -->
     <div id="map" style="width: 700px; height: 500px;"></div>
