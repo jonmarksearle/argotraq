@@ -28,6 +28,7 @@ var displayedLastHours;
 var displayedTimePoint = new Date();
 var hoursToMillis = 3600000;
 var initialRun = false;
+var retrievingData = false;
 
 //
 // Setup Leaflet Map
@@ -102,7 +103,6 @@ var scopes = 'https://www.googleapis.com/auth/plus.login';
 //
 
 function HandleGoogleLogin() {
-	initialRun = true;
 	gapi.client.setApiKey(apiKey);
 	window.setTimeout(checkAuth, 1);
 }
@@ -186,7 +186,6 @@ function makeApiCall() {
 
 
 function HandleGoogleLogin2() {
-	initialRun = true;
 	console.log("anonymous");
 	gapi.client.setApiKey(apiKey);
 	window.setTimeout(checkAuth2, 1);
@@ -307,6 +306,9 @@ function HandleAmazonUnauth() {
 } // HandleAmazonUnauth
 
 function HandleS3MetaData() {
+	initialRun = true;
+	retrievingData = true;
+
 	s3 = new AWS.S3();
 	console.log(s3);
 	if (!displayedLastHours) {
@@ -475,6 +477,7 @@ function HandleS3DataVisualization() {
 	}
 	//L.geoJson(geoJsonTrajectories).addTo(map);
 	geoJsonLayer.addData(geoJsonTrajectories);
+	retrievingData = false;
 } //HandleS3DataVisualization
 
 function getApproxHours() {
@@ -531,6 +534,9 @@ function updateDateInput(val) {
 function adjustDateTime() {
 	if (!initialRun) {
 		window.alert("Please run 'Sign In via Google' or 'Go Anonymous' first.");
+	}
+	else if (retrievingData) {
+		window.alert("Wait until previous data are retrieved.");
 	}
 	else {
 		console.log("removeLayer");
