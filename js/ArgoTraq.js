@@ -307,7 +307,8 @@ function HandleAmazonUnauth() {
 
 function HandleS3MetaData() {
 	initialRun = true;
-	retrievingData = true;
+	
+	IndicateRetrevingData();
 
 	s3 = new AWS.S3();
 	console.log(s3);
@@ -419,7 +420,7 @@ function HandleS3Data() {
 
 function showDataTrajectories(inData) {
 	// save total geoJson object
-	//TODO: error, because entries of geoJsonObj are created in callback 
+	//FIXME: error, because entries of geoJsonObj are created in callback 
 	//TODO: preconfigure geoJsonObj with meta object points and then delete if-else-block
 
 	var counterDataObjects = inData.Contents.length;
@@ -477,7 +478,7 @@ function HandleS3DataVisualization() {
 	}
 	//L.geoJson(geoJsonTrajectories).addTo(map);
 	geoJsonLayer.addData(geoJsonTrajectories);
-	retrievingData = false;
+	IndicateIndicateDataRetreved();
 } //HandleS3DataVisualization
 
 function getApproxHours() {
@@ -520,25 +521,37 @@ function updateSliderInput(val) {
 	displayedLastHours = val * hoursToMillis;
 }
 
+function IndicateRetrevingData () { // Indicate that data is now being retreived
+	retrievingData = true;
+	$("#divLoadingMsg").html("Retreving data from cloud ...");
+}
+
+function IndicateIndicateDataRetreved() { // Indicate that data has now been retreived
+	retrievingData = false;
+	$("#divLoadingMsg").html("");
+}
+
 $('#datepicker').val(getDateYMD(new Date()));
 $('#datepicker').attr('min', getDateYMD(new Date(1)));
 $('#datepicker').attr('max', getDateYMD(new Date()));
 
-function updateDateInput(val) {
-	console.log("new Date:: " + val);
-	var displayedTimePointMillis = new Date(val).getTime() + getTimeMillis();
-	displayedTimePoint = new Date(displayedTimePointMillis);
-	console.log(displayedTimePoint);
-}
+$('#timepicker').val(getTimeHM(new Date()));
+
 
 function adjustDateTime() {
+	displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val() );
+
 	if (!initialRun) {
-		window.alert("Please run 'Sign In via Google' or 'Go Anonymous' first.");
+		// FIXME: This doesn't seem to be working too well
+		console.log(" run 'Go Anonymous' first.");
+		// window.alert("Please run 'Sign In via Google' or 'Go Anonymous' first."); // Shouldn't require the user to log-in again.
 	}
 	else if (retrievingData) {
-		window.alert("Wait until previous data are retrieved.");
+		console.log("Wait until previous data are retrieved.");
+		// window.alert("Wait until previous data are retrieved."); // this is just annoying 
 	}
 	else {
+		displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val() );
 		console.log("removeLayer");
 		geoJsonLayer.clearLayers();
 		deviceIds = [];
@@ -561,6 +574,19 @@ function getDateYMD(val) {
 		mm = '0' + mm
 	}
 	return yyyy + "-" + mm + "-" + dd;
+}
+
+function getTimeHM(val) {
+	var hh = val.getHours();
+	var mm = val.getMinutes();
+
+	if (hh < 10) {
+		hh = '0' + hh
+	}
+	if (mm < 10) {
+		mm = '0' + mm
+	}
+	return hh + ":" + mm;
 }
 
 function getTimeMillis() {
@@ -703,7 +729,6 @@ function GetMetaFiles() {
 	theMetaLoader.getMetaDataCallPtr = setInterval(getMetaDataFunc, 3000);
 	theMetaLoader.checkMetaDataFinPtr = setInterval(checkMetaDataFinFunc, 1000);
 }
-
 
 var getMetaDataFunc = function() {
 	var endPos = theMetaLoader.lastFileMarker.indexOf("/meta-");

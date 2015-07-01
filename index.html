@@ -17,29 +17,38 @@
     <span class="SignInText" id="msgSignIn"></span>
     <br/>
 
+    <!--   Until we have the Authentication bit working properly
     <button id="acrSignIn" onClick="HandleGoogleLogin()"> Sign In via Google </button>
-
     <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Go Anonymous </button>
+    -->
+    <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Get Started </button>
+    
+    <div class="BannerMessageText" id="divLoadingMsg">User Not Logged In..</div> <br/>
 
-    <label class="BannerHeaderText"> Current Location Tracker </label>
     <br/>
-
-    <div class="BannerMessageText" id="divLoadingMsg">Page State: User Not Logged In..</div>
+    <label class="BannerHeaderText"></label>
+    <br/>
 
     <!-- Timeslider -->
     <form oninput="timesliderOutput.value=timeslider.value">
-        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24" onchange="updateSliderInput(this.value);">
 
-        <output name="timesliderOutput" for="timesliderInput">24</output>
+        <div> Tracq the last <output name="timesliderOutput" for="timesliderInput">24</output> hours to 
 
-        <input id="datepicker" type="date" onchange="updateDateInput(this.value);" />
+        <input id="datepicker" type="date" > 
+        <input id="timepicker" type="time" > <br/>
+
+        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24"> <!--  onchange="updateSliderInput(this.value);"> -->
+        <button onClick="adjustDateTime();">Update</button>
+
+        </div><br/>
+
     </form>
-    <button onClick="adjustDateTime();">Submit</button>
+    
 
     <!-- Datepicker -->
 
     <!-- Map -->
-    <div id="map" style="width: 600px; height: 400px;"></div>
+    <div id="map" style="width: 700px; height: 500px;"></div>
 
     <div id="content"></div>
     <span id="cogUsers" class="WMSelectionMessage">
@@ -50,6 +59,7 @@
     <script src="lib/leaflet/leaflet.js"></script>
     <script type="text/javascript" src="lib/jquery-1.11.3.min.js"></script>
     <script type="text/javascript" src="js/ArgoTraq.js"></script>
+
 </body>
 
 </html>
