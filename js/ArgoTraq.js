@@ -18,6 +18,18 @@ var theMapAddressesTemp = null;
 var callLogin = true;
 var googleEmail;
 
+// 
+var geoJsonDevices = [];
+var geoJsonTrajectories = [];
+var geoJsonLayer;
+var deviceIds = [];
+//var hours24 = 86400000;
+var displayedLastHours;
+var displayedTimePoint = new Date();
+var hoursToMillis = 3600000;
+var initialRun = false;
+var retrievingData = false;
+
 //
 // Setup Leaflet Map
 //
@@ -293,25 +305,16 @@ function HandleAmazonUnauth() {
 	HandleS3MetaData();
 } // HandleAmazonUnauth
 
-var geoJsonDevices = [];
-var geoJsonTrajectories = [];
-var deviceIds = [];
-
 function HandleS3MetaData() {
+	initialRun = true;
+	retrievingData = true;
+
 	s3 = new AWS.S3();
 	console.log(s3);
-
-	// s3.listObjects({
-	// 	Bucket: s3Bucket,
-	// 	Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/1',
-	// }, function(err, data) {
-	// 	if (err) console.log(err);
-	// 	else {
-	// 		// console.log(data);
-	// 		//showDataObjects(data);
-	// 	}
-	// });
-
+	if (!displayedLastHours) {
+		console.log("set displayHours to default 24hours");
+		displayedLastHours = hoursToMillis * 24 /*hours24*/ ;
+	}
 	s3.listObjects({
 		Bucket: 'argotraq-data',
 		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/meta'
@@ -323,7 +326,7 @@ function HandleS3MetaData() {
 		}
 	});
 
-} // HandleS3Data
+} // HandleS3MetaData
 
 function showMetaObjects(data) {
 	//var geoJsonDevices = [];
@@ -373,7 +376,7 @@ function showMetaObjects(data) {
 
 function HandleS3Data() {
 	//show devices on Leaflet map
-	L.geoJson(geoJsonDevices, {
+	geoJsonLayer = L.geoJson(geoJsonDevices, {
 		onEachFeature: onEachFeature
 	}).addTo(map);
 
@@ -400,10 +403,11 @@ function HandleS3Data() {
 		geoJsonTrajectories.push(lineFeature);
 	}
 	console.log(geoJsonTrajectories);
+	console.log(getApproxHours());
 
 	s3.listObjects({
 		Bucket: s3Bucket,
-		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/1',
+		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/' + getApproxHours(),
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
@@ -418,40 +422,46 @@ function showDataTrajectories(inData) {
 	//TODO: error, because entries of geoJsonObj are created in callback 
 	//TODO: preconfigure geoJsonObj with meta object points and then delete if-else-block
 
-	var counterDataObjects = 100;
+	var counterDataObjects = inData.Contents.length;
 	var deviceIndices = []
-	for (var i = 0; i < 100 /*data.Contents.length*/ ; i++) {
-		var key = inData.Contents[i].Key.split('/')[1]
+	for (var i = 0; i < inData.Contents.length; i++) {
+		var key = inData.Contents[i].Key.split('/')[1];
 		//console.log(key);
-		var deviceId = key.split("-")[1]
+		var timeMillis = key.split("-")[0];
+		var deviceId = key.split("-")[1];
 		//console.log(deviceId);
-
-		// save coordinates of the objects to existing linestring
-		// linestring needs to be ordered by timeStamp
-		var deviceIndex;
-		for (var j = 0; j < geoJsonTrajectories.length; j++) {
-			//console.log(geoJsonObj[j]);
-			if (geoJsonTrajectories[j].properties.deviceId == deviceId) deviceIndex = j;
-		}
-		deviceIndices[i] = deviceIndex;
-		s3.getObject({
-			Bucket: s3Bucket,
-			Key: inData.Contents[i].Key,
-			ResponseCacheControl: i.toString(),
-		}, function(err, data) {
-			if (err) console.log(err);
-			else {
-				console.log(data);
-				var entry = Uint8ArrayToObject(data.Body);
-				// save coordinates to appropriate device
-				geoJsonTrajectories[deviceIndices[data.CacheControl]].geometry.coordinates.push([entry.lng, entry.lat, entry.timeStamp])
-				counterDataObjects -= 1;
-				if (counterDataObjects == 0) {
-					console.log(counterDataObjects);
-					HandleS3DataVisualization();
-				};
+		// refine selection of exactly last 24 hours
+		if ((Number(timeMillis) > (displayedTimePoint.getTime() - displayedLastHours)) && (Number(timeMillis) <= displayedTimePoint.getTime())) {
+			// save coordinates of the objects to existing linestring
+			// linestring needs to be ordered by timeStamp
+			var deviceIndex;
+			for (var j = 0; j < geoJsonTrajectories.length; j++) {
+				//console.log(geoJsonObj[j]);
+				if (geoJsonTrajectories[j].properties.deviceId == deviceId) deviceIndex = j;
 			}
-		});
+			deviceIndices[i] = deviceIndex;
+			s3.getObject({
+				Bucket: s3Bucket,
+				Key: inData.Contents[i].Key,
+				ResponseCacheControl: i.toString(),
+			}, function(err, data) {
+				if (err) console.log(err);
+				else {
+					//console.log(data);
+					var entry = Uint8ArrayToObject(data.Body);
+					// save coordinates to appropriate device
+					geoJsonTrajectories[deviceIndices[data.CacheControl]].geometry.coordinates.push([entry.lng, entry.lat, entry.timeStamp])
+					counterDataObjects -= 1;
+					if (counterDataObjects == 0) {
+						console.log(counterDataObjects);
+						HandleS3DataVisualization();
+					};
+				}
+			});
+		}
+		else {
+			counterDataObjects -= 1;
+		}
 	}
 } //showDataTrajectories
 
@@ -462,46 +472,32 @@ function HandleS3DataVisualization() {
 	//sort the lineStrings by date
 	for (var k = 0; k < geoJsonTrajectories.length; k++) {
 		geoJsonTrajectories[k].geometry['coordinates'].sort(function(a, b) {
-			return a[2] - b[2]
+			return new Date(a[2]).getTime() - new Date(b[2]).getTime()
 		});
 	}
-	L.geoJson(geoJsonTrajectories).addTo(map);
-}
+	//L.geoJson(geoJsonTrajectories).addTo(map);
+	geoJsonLayer.addData(geoJsonTrajectories);
+	retrievingData = false;
+} //HandleS3DataVisualization
 
-// function showDataObjects(data) {
-// 	// var geoJsonObj = []
-// 	for (i = 0; i < data.Contents.length; i++) {
-// 		var key = data.Contents[i].Key.split('/')[1]
-// 		var geoEntry = {
-// 			'type': 'Feature',
-// 			'properties': {
-// 				'key': key,
-// 				"popupContent": "<p><b>Key: </b>" + key + "</p>"
-// 			},
-// 			'geometry': {
-// 				'type': 'Point',
-// 			}
-// 		};
-// 		s3.getObject({
-// 			Bucket: s3Bucket,
-// 			Key: data.Contents[i].Key,
-// 		}, function(err, data) {
-// 			if (err) console.log(err);
-// 			else {
-// 				console.log(data);
-// 				var entry = Uint8ArrayToObject(data.Body);
-// 				console.log(entry);
-// 				geoEntry.geometry['coordinates'] = [entry.lng, entry.lat];
-// 				geoEntry.properties['timeStamp'] = entry.timeStamp;
-// 				// geoJsonObj.push(geoEntry);
-// 				console.log(geoEntry);
-// 				L.geoJson(geoEntry, {
-// 					onEachFeature: onEachFeature
-// 				}).addTo(map);
-// 			}
-// 		});
-// 	}
-// } // showDataObjects
+function getApproxHours() {
+	var currentTime = (new Date().getTime()).toString();
+	var pastTime = (new Date().getTime() - displayedLastHours).toString();
+	var timestring = "";
+	var digitcounter = 0;
+	var allequal = true;
+	var timelength = currentTime.length;
+	while (allequal) {
+		if (currentTime[13 - timelength] == pastTime[13 - timelength]) {
+			timestring += currentTime[13 - timelength]
+			timelength -= 1;
+		}
+		else {
+			allequal = false;
+		}
+	}
+	return timestring;
+} //getApprox24hours
 
 function Uint8ArrayToObject(arr) {
 	return JSON.parse(String.fromCharCode.apply(null, arr))
@@ -515,6 +511,67 @@ function sleep(milliseconds) {
 		}
 	}
 }
+
+//
+// Timeslider and Datepicker
+//
+
+function updateSliderInput(val) {
+	displayedLastHours = val * hoursToMillis;
+}
+
+$('#datepicker').val(getDateYMD(new Date()));
+$('#datepicker').attr('min', getDateYMD(new Date(1)));
+$('#datepicker').attr('max', getDateYMD(new Date()));
+
+function updateDateInput(val) {
+	console.log("new Date:: " + val);
+	var displayedTimePointMillis = new Date(val).getTime() + getTimeMillis();
+	displayedTimePoint = new Date(displayedTimePointMillis);
+	console.log(displayedTimePoint);
+}
+
+function adjustDateTime() {
+	if (!initialRun) {
+		window.alert("Please run 'Sign In via Google' or 'Go Anonymous' first.");
+	}
+	else if (retrievingData) {
+		window.alert("Wait until previous data are retrieved.");
+	}
+	else {
+		console.log("removeLayer");
+		geoJsonLayer.clearLayers();
+		deviceIds = [];
+		geoJsonDevices = [];
+		geoJsonTrajectories = [];
+		console.log("display data with new properties");
+		HandleS3MetaData();
+	};
+}
+
+function getDateYMD(val) {
+	var dd = val.getDate();
+	var mm = val.getMonth() + 1; //January is 0!
+
+	var yyyy = val.getFullYear();
+	if (dd < 10) {
+		dd = '0' + dd
+	}
+	if (mm < 10) {
+		mm = '0' + mm
+	}
+	return yyyy + "-" + mm + "-" + dd;
+}
+
+function getTimeMillis() {
+	var currTime = new Date;
+	var hh = currTime.getHours() * 60 * 60 * 1000;
+	var mm = currTime.getMinutes() * 60 * 1000;
+	var ss = currTime.getSeconds() * 1000;
+	console.log(hh + " " + mm + " " + ss);
+	return hh + mm + ss;
+}
+
 
 //
 // Main module for map build and render..
