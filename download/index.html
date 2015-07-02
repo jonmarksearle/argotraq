@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+
+    <link rel="stylesheet" type="text/css" href="../css/ArgoTraq.css">
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1.35.min.js"></script>
+    <script src="https://apis.google.com/js/client.js"></script>
+</head>
+
+<body>
+    <span class="SignInText" id="msgSignIn"></span>
+    <br/>
+
+    <!--   Until we have the Authentication bit working properly
+    <button id="acrSignIn" onClick="HandleGoogleLogin()"> Sign In via Google </button>
+    <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Go Anonymous </button>
+    -->
+    <button id="acrBypassSignIn" onClick="HandleGoogleLogin3()"> Get Started </button>
+    
+    <div class="BannerMessageText" id="divLoadingMsg">User Not Logged In..</div>
+
+    <br/>
+    <label class="BannerHeaderText"></label>
+    <br/>
+
+    <!-- Timeslider -->    <!-- Datepicker -->
+    <form oninput="timesliderOutput.value=timeslider.value">
+        From: <input id="datepickerFrom" type="date" > 
+        To: <input id="datepickerTo" type="date" >
+         <!--  onchange="updateSliderInput(this.value);"> -->
+    </form>
+    <button onClick="adjustDateTime();">Update</button>
+
+    <!-- Map -->
+    <div id="content"></div>
+    <span id="cogUsers" class="WMSelectionMessage">
+            <span id="msgInfoList">All Users (AWS cognito IDs):</span>
+    <select size=3 id="cogUserSel" style="background-color: #E9F7FF; border: #2E5CE6 solid 1px;"></select>
+    </span>
+
+    <script type="text/javascript" src="lib/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="js/ArgoTraq.js"></script>
+
+</body>
+
+</html>
