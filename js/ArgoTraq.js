@@ -395,10 +395,44 @@ function showMetaObjects(data) {
 
 } // showMetaObjects
 
+var minLat;
+var minLng;
+var maxLat;
+var maxLng;
+
+function setBounds(devs) {
+	minLat = 90;
+	minLng = 180;
+	maxLat = -90;
+	maxLng = -180;
+	//find minLat, maxLat, minLng, maxLng
+	for (var i = 0; i < devs.length; i++) {
+		lng = devs[i].geometry.coordinates[0];
+		lat = devs[i].geometry.coordinates[1];
+		if (lng <= minLng) minLng = lng;
+		if (lng >= maxLng) maxLng = lng;
+		if (lat <= minLat) minLat = lat;
+		if (lat >= maxLat) maxLat = lat;
+	}
+	console.log("BBOX: " + minLng + " " + maxLng + " " + minLat + " " + maxLat);
+	
+	var southWest = new L.LatLng(maxLat, minLng),
+    northEast = new L.LatLng(minLat, maxLng),
+    bounds = new L.LatLngBounds(southWest, northEast);
+    
+    // 2/3
+    //var mapWidth = document.getElementById('map').offsetWidth;
+    //var mapHeight = document.getElementById('map').offsetHeight;
+    //map.fitBounds(bounds, {padding: [mapHeight*(1/6), mapWidth*(1/6)]});
+    
+    map.fitBounds(bounds, {padding: [50, 50]});
+}
+
 function HandleS3Data() {
 	//show devices on Leaflet map
 	console.log("show devices");
 	console.log(geoJsonDevices);
+	setBounds(geoJsonDevices);
 	geoJsonLayer = L.geoJson(geoJsonDevices, {
 		onEachFeature: onEachFeature
 	}).addTo(map);
