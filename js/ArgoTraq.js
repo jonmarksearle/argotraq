@@ -244,34 +244,54 @@ function UnauthLogin() {
 // config for Amazon Authenticated login start..
 //
 
-
 function HandleAmazonAuth() {
 	console.log("amazon auth");
 	console.log(gapi.auth.getToken());
 
-	var cred = new AWS.CognitoIdentityCredentials({
+	var params = {
 		IdentityPoolId: identityPoolID,
 		Logins: {
 			'accounts.google.com': gapi.auth.getToken().access_token
-		},
-	});
+		}
+	};
 
-	AWS.config.update({
-		region: 'us-east-1',
-		credentials: cred
-	});
+	// set the Amazon Cognito region
+	AWS.config.region = 'us-east-1';
+	// initialize the Credentials object with our parameters
+	AWS.config.credentials = new AWS.CognitoIdentityCredentials(params);
 
 	AWS.config.credentials.get(function(err) {
-		if (!err)
-			console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
-		else
+		if (err) {
 			console.log(err);
+		}
+		else {
+			console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
+		}
 	});
 
-	s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
-	console.log(s3);
+	// var cred = new AWS.CognitoIdentityCredentials({
+	// 	IdentityPoolId: identityPoolID,
+	// 	Logins: {
+	// 		'accounts.google.com': gapi.auth.getToken().access_token
+	// 	},
+	// });
 
-	console.log(s3);
+	// AWS.config.update({
+	// 	region: 'us-east-1',
+	// 	credentials: cred
+	// });
+
+	// AWS.config.credentials.get(function(err) {
+	// 	if (!err)
+	// 		console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
+	// 	else
+	// 		console.log(err);
+	// });
+
+	// s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
+	// console.log(s3);
+
+	// console.log(s3);
 } // HandleAmazonAuth
 
 //
@@ -307,7 +327,7 @@ function HandleAmazonUnauth() {
 
 function HandleS3MetaData() {
 	initialRun = true;
-	
+
 	IndicateRetrevingData();
 
 	s3 = new AWS.S3();
@@ -348,7 +368,7 @@ function showMetaObjects(data) {
 					}
 				};
 				var entry = Uint8ArrayToObject(data.Body);
-				console.log(entry);
+				//console.log(entry);
 				geoEntry.properties['LastModified'] = data.LastModified;
 				geoEntry.properties['deviceId'] = entry.deviceId;
 				geoEntry.properties['deviceModel'] = entry.deviceModel;
@@ -360,12 +380,12 @@ function showMetaObjects(data) {
 					'<br><b>Longitude: </b>' + entry.lastObject.lng +
 					'<br><b>Latitude</b>' + entry.lastObject.lat +
 					'</p>';
-				console.log(geoEntry);
+				//console.log(geoEntry);
 				geoJsonDevices.push(geoEntry);
 				// count callbacks. Continue after last callback
 				counterDevices = counterDevices - 1;
 				if (counterDevices == 0) {
-					console.log(counterDevices);
+					//console.log(counterDevices);
 					HandleS3Data();
 				};
 			};
@@ -377,6 +397,8 @@ function showMetaObjects(data) {
 
 function HandleS3Data() {
 	//show devices on Leaflet map
+	console.log("show devices");
+	console.log(geoJsonDevices);
 	geoJsonLayer = L.geoJson(geoJsonDevices, {
 		onEachFeature: onEachFeature
 	}).addTo(map);
@@ -521,7 +543,7 @@ function updateSliderInput(val) {
 	displayedLastHours = val * hoursToMillis;
 }
 
-function IndicateRetrevingData () { // Indicate that data is now being retreived
+function IndicateRetrevingData() { // Indicate that data is now being retreived
 	retrievingData = true;
 	$("#divLoadingMsg").html("Retreving data from cloud ...");
 }
@@ -539,7 +561,7 @@ $('#timepicker').val(getTimeHM(new Date()));
 
 
 function adjustDateTime() {
-	displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val() );
+	displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val());
 
 	if (!initialRun) {
 		// FIXME: This doesn't seem to be working too well
@@ -551,7 +573,7 @@ function adjustDateTime() {
 		// window.alert("Wait until previous data are retrieved."); // this is just annoying 
 	}
 	else {
-		displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val() );
+		displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val());
 		console.log("removeLayer");
 		geoJsonLayer.clearLayers();
 		deviceIds = [];
