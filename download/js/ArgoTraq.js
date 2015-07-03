@@ -235,30 +235,6 @@ function HandleAmazonAuth() {
 			console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
 		}
 	});
-
-	// var cred = new AWS.CognitoIdentityCredentials({
-	// 	IdentityPoolId: identityPoolID,
-	// 	Logins: {
-	// 		'accounts.google.com': gapi.auth.getToken().access_token
-	// 	},
-	// });
-
-	// AWS.config.update({
-	// 	region: 'us-east-1',
-	// 	credentials: cred
-	// });
-
-	// AWS.config.credentials.get(function(err) {
-	// 	if (!err)
-	// 		console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
-	// 	else
-	// 		console.log(err);
-	// });
-
-	// s3 = new AWS.S3( /*options = {region: 'ap-southeast-2'}*/ );
-	// console.log(s3);
-
-	// console.log(s3);
 } // HandleAmazonAuth
 
 //
@@ -284,14 +260,94 @@ function HandleAmazonUnauth() {
 			console.log(err);
 	});
 
-	// AWS.config.apiVersions = {
-	// 	s3: '2006-03-01',
-	// 	// other service API versions
-	// };
-
-	// TODO: HandleS3MetaData(); to HandleS3ToCs
+	HandleS3ToCsv();
 } // HandleAmazonUnauth
 
+function HandleS3ToCsv() {
+	IndicateRetrevingData();
+	
+	s3 = new AWS.S3();
+	console.log(s3);
+	
+	console.log(getApproxTime())
+	s3.listObjects({
+		Bucket: s3Bucket,
+		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/' + getApproxTime(),
+	}, function(err, data) {
+		if (err) console.log(err);
+		else {
+			console.log(data);
+		}
+	});
+	
+} //HandleS3ToCsv
+
+function getApproxTime() {
+	var timeFromString = timeFrom.getTime().toString();
+	//console.log(timeFromString);
+	var timeToString = timeTo.getTime().toString();
+	//console.log(timeToString);
+	var timestring = "";
+	var digitcounter = 0;
+	var allequal = true;
+	var timelength = timeToString.length;
+	while (allequal) {
+		if (timeToString[13 - timelength] == timeFromString[13 - timelength]) {
+			timestring += timeToString[13 - timelength]
+			timelength -= 1;
+		}
+		else {
+			allequal = false;
+		}
+	}
+	//console.log(timestring);
+	return timestring;
+}
+
+function IndicateRetrevingData() { // Indicate that data is now being retreived
+	retrievingData = true;
+	$("#divLoadingMsg").html("Retreving data from cloud ...");
+}
+
+function IndicateIndicateDataRetreved() { // Indicate that data has now been retreived
+	retrievingData = false;
+	$("#divLoadingMsg").html("");
+}
+
+var timeFrom = new Date()
+timeFrom.setDate(timeFrom.getDate()-1);
+$('#datepickerFrom').val(getDateYMD(timeFrom));
+$('#datepickerFrom').attr('min', getDateYMD(new Date(1)));
+$('#datepickerFrom').attr('max', getDateYMD(new Date()));
+
+var timeTo = new Date();
+$('#datepickerTo').val(getDateYMD(timeTo));
+$('#datepickerTo').attr('min', getDateYMD(new Date(1)));
+$('#datepickerTo').attr('max', getDateYMD(new Date()));
+
+function getDateYMD(val) {
+	var dd = val.getDate();
+	var mm = val.getMonth() + 1; //January is 0!
+
+	var yyyy = val.getFullYear();
+	if (dd < 10) {
+		dd = '0' + dd
+	}
+	if (mm < 10) {
+		mm = '0' + mm
+	}
+	return yyyy + "-" + mm + "-" + dd;
+}
+
+function updateTimeFrom(val) {
+	console.log(val);
+	timeFrom = new Date(val);
+}
+
+function updateTimeTo(val) {
+	console.log(val);
+	timeTo = new Date(val);
+}
 
 //
 // Main module for map build and render..

@@ -19,7 +19,7 @@
     <button id="acrSignIn" onClick="HandleGoogleLogin()"> Sign In via Google </button>
     <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Go Anonymous </button>
     -->
-    <button id="acrBypassSignIn" onClick="HandleGoogleLogin3()"> Get Started </button>
+    <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Get Started </button>
     
     <div class="BannerMessageText" id="divLoadingMsg">User Not Logged In..</div>
 
@@ -28,12 +28,9 @@
     <br/>
 
     <!-- Timeslider -->    <!-- Datepicker -->
-    <form oninput="timesliderOutput.value=timeslider.value">
-        From: <input id="datepickerFrom" type="date" > 
-        To: <input id="datepickerTo" type="date" >
-         <!--  onchange="updateSliderInput(this.value);"> -->
-    </form>
-    <button onClick="adjustDateTime();">Update</button>
+    From: <input id="datepickerFrom" type="date" onchange="updateTimeFrom(this.value);"> 
+    To: <input id="datepickerTo" type="date" onchange="updateTimeTo(this.value);" >
+    <!--  onchange="updateSliderInput(this.value);"> -->
 
     <!-- Map -->
     <div id="content"></div>
@@ -42,7 +39,7 @@
     <select size=3 id="cogUserSel" style="background-color: #E9F7FF; border: #2E5CE6 solid 1px;"></select>
     </span>
 
-    <script type="text/javascript" src="lib/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="../lib/jquery-1.11.3.min.js"></script>
     <script type="text/javascript" src="js/ArgoTraq.js"></script>
 
 </body>
