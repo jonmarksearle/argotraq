@@ -480,7 +480,9 @@ function showDataTrajectories(inData) {
 	//TODO: preconfigure geoJsonObj with meta object points and then delete if-else-block
 
 	var counterDataObjects = inData.Contents.length;
+	console.log(counterDataObjects);
 	var deviceIndices = []
+	if (counterDataObjects != 0) {
 	for (var i = 0; i < inData.Contents.length; i++) {
 		var key = inData.Contents[i].Key.split('/')[1];
 		//console.log(key);
@@ -520,6 +522,9 @@ function showDataTrajectories(inData) {
 			counterDataObjects -= 1;
 		}
 	}
+	} else {
+		HandleS3DataVisualization();
+	}
 } //showDataTrajectories
 
 function HandleS3DataVisualization() {
@@ -538,8 +543,8 @@ function HandleS3DataVisualization() {
 } //HandleS3DataVisualization
 
 function getApproxHours() {
-	var currentTime = (new Date().getTime()).toString();
-	var pastTime = (new Date().getTime() - displayedLastHours).toString();
+	var currentTime = (displayedTimePoint.getTime()).toString();
+	var pastTime = (displayedTimePoint.getTime() - displayedLastHours).toString();
 	var timestring = "";
 	var digitcounter = 0;
 	var allequal = true;
@@ -577,6 +582,11 @@ function updateSliderInput(val) {
 	displayedLastHours = val * hoursToMillis;
 }
 
+function updateDateTimeInput() {
+	displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val());
+	console.log(displayedTimePoint);
+}
+
 function IndicateRetrevingData() { // Indicate that data is now being retreived
 	retrievingData = true;
 	$("#divLoadingMsg").html("Retreving data from cloud ...");
@@ -595,8 +605,6 @@ $('#timepicker').val(getTimeHM(new Date()));
 
 
 function adjustDateTime() {
-	displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val());
-
 	if (!initialRun) {
 		// FIXME: This doesn't seem to be working too well
 		console.log(" run 'Go Anonymous' first.");

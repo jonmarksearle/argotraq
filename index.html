@@ -32,11 +32,11 @@
     <!-- Timeslider -->    <!-- Datepicker -->
     <form oninput="timesliderOutput.value=timeslider.value">
 
-        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24">
+        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24" onchange="updateSliderInput(this.value);">
         <output name="timesliderOutput" for="timesliderInput">24</output> hours to 
 
-        <input id="datepicker" type="date" > 
-        <input id="timepicker" type="time" > <br/>
+        <input id="datepicker" type="date" onchange="updateDateTimeInput();" > 
+        <input id="timepicker" type="time" onchange="updateDateTimeInput();"> <br/>
 
          <!--  onchange="updateSliderInput(this.value);"> -->
     </form>
