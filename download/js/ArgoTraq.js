@@ -364,11 +364,18 @@ function checkNextMarker(marker, inData) {
 function exportCSV() {
 	var csvFile = encodeURIComponent(csv);
 	$('#export').removeAttr('style');
+	//$('#export-button').removeAttr('style');
 	$('#export-button').attr({
 		download: 'data.csv',
 		href: 'data:text/csv;charset=utf-8,' + csvFile,
 	});
 }
+
+$('#export').click(function() {
+	console.log("click");
+    //$('#export-button').click();
+    document.getElementById('export-button').click();
+});
 
 function getApproxTime() {
 	var timeFromString = timeFrom.getTime().toString();
