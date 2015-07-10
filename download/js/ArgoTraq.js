@@ -35,6 +35,9 @@ var hoursToMillis = 3600000;
 var initialRun = false;
 var retrievingData = false;
 
+// CSV
+var csv;
+
 //
 // Google Authorise First Go Start
 // use for unauthorising: https://www.google.com/accounts/b/0/IssuedAuthSubTokens
@@ -265,22 +268,107 @@ function HandleAmazonUnauth() {
 
 function HandleS3ToCsv() {
 	IndicateRetrevingData();
-	
+
 	s3 = new AWS.S3();
 	console.log(s3);
-	
-	console.log(getApproxTime())
+
+	console.log(getApproxTime());
+	csv = "key,timemillis,lat,lng,minAcceleration,maxAcceleration,minZ,maxZ,timestamp\n";
 	s3.listObjects({
 		Bucket: s3Bucket,
 		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/' + getApproxTime(),
+		Delimiter: 'first',
+		//EncodingType: 'url',
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
 			console.log(data);
+			HandleS3Data(data);
 		}
 	});
-	
 } //HandleS3ToCsv
+
+function HandleS3Data(inData) {
+	var counterDataObjects = inData.Contents.length;
+	console.log(counterDataObjects);
+	if (counterDataObjects != 0) {
+		for (var i = 0; i < inData.Contents.length; i++) {
+			var key = inData.Contents[i].Key.split('/')[1];
+			//console.log(key);
+			var timeMillis = key.split("-")[0];
+			var deviceId = key.split("-")[1];
+			//console.log(timeFrom.getTime());
+			//console.log(timeTo.getTime());
+			if (Number(timeMillis) >= timeFrom.getTime() && Number(timeMillis) <= timeTo.getTime()) {
+				console.log("retrieve data");
+				s3.getObject({
+					Bucket: s3Bucket,
+					Key: inData.Contents[i].Key,
+					ResponseCacheControl: i.toString(),
+				}, function(err, data) {
+					if (err) console.log(err);
+					else {
+						//console.log(data);
+						var entry = Uint8ArrayToObject(data.Body);
+						//console.log(entry);
+						csv += key + "," + timeMillis + "," + entry.lat + "," + entry.lng + "," + entry.minAcceleration + "," + entry.maxAcceleration + "," + entry.minZ + "," + entry.maxZ + "," + entry.timeStamp + "\n";
+						counterDataObjects -= 1;
+						if (counterDataObjects == 0) {
+							console.log(counterDataObjects);
+							//Recursion if nextMarker is not undefined
+							checkNextMarker(inData.NextMarker, inData);
+						};
+					}
+				});
+			}
+			else {
+				counterDataObjects -= 1;
+				if (counterDataObjects == 0) {
+					console.log(counterDataObjects);
+					//Recursion if nextMarker is not undefined
+					checkNextMarker(inData.NextMarker, inData);
+				};
+			}
+		}
+	}
+
+
+} // HandleS3Data
+
+function checkNextMarker(marker, inData) {
+	//Recursion if nextMarker is not undefined
+	if (marker !== undefined) {
+		console.log("next Objects");
+		s3.listObjects({
+			Bucket: s3Bucket,
+			Prefix: inData.Prefix,
+			Delimiter: 'subsequent',
+			Marker: inData.NextMarker,
+			//EncodingType: 'url',
+		}, function(err, data) {
+			if (err) console.log(err);
+			else {
+				console.log(data);
+				HandleS3Data(data);
+			}
+		});
+	}
+	else {
+		console.log("no next Objects");
+		// TODO next function > export CSV
+		console.log(csv);
+		exportCSV();
+	}
+}
+
+function exportCSV() {
+	var csvFile = encodeURIComponent(csv);
+	$('#export').removeAttr('style');
+	$('#export-button').attr({
+		download: 'data.csv',
+		href: 'data:text/csv;charset=utf-8,' + csvFile,
+	});
+}
 
 function getApproxTime() {
 	var timeFromString = timeFrom.getTime().toString();
@@ -302,6 +390,10 @@ function getApproxTime() {
 	}
 	//console.log(timestring);
 	return timestring;
+} // getApproxTime
+
+function Uint8ArrayToObject(arr) {
+	return JSON.parse(String.fromCharCode.apply(null, arr))
 }
 
 function IndicateRetrevingData() { // Indicate that data is now being retreived
@@ -315,14 +407,16 @@ function IndicateIndicateDataRetreved() { // Indicate that data has now been ret
 }
 
 var timeFrom = new Date()
-timeFrom.setDate(timeFrom.getDate()-1);
+timeFrom.setDate(timeFrom.getDate() - 1);
 $('#datepickerFrom').val(getDateYMD(timeFrom));
-$('#datepickerFrom').attr('min', getDateYMD(new Date(1)));
-$('#datepickerFrom').attr('max', getDateYMD(new Date()));
 
 var timeTo = new Date();
 $('#datepickerTo').val(getDateYMD(timeTo));
-$('#datepickerTo').attr('min', getDateYMD(new Date(1)));
+
+$('#datepickerFrom').attr('min', getDateYMD(new Date(1)));
+$('#datepickerFrom').attr('max', getDateYMD(timeTo));
+
+$('#datepickerTo').attr('min', getDateYMD(timeFrom));
 $('#datepickerTo').attr('max', getDateYMD(new Date()));
 
 function getDateYMD(val) {
@@ -342,11 +436,15 @@ function getDateYMD(val) {
 function updateTimeFrom(val) {
 	console.log(val);
 	timeFrom = new Date(val);
+	// don't be able to select timeTo smaller than timeFrom
+	$('#datepickerTo').attr('min', getDateYMD(timeFrom));
 }
 
 function updateTimeTo(val) {
 	console.log(val);
 	timeTo = new Date(val);
+	// don't be able to select timeFrom greater than timeTo
+	$('#datepickerFrom').attr('max', getDateYMD(timeTo));
 }
 
 //

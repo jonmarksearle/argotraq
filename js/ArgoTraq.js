@@ -426,7 +426,7 @@ function setBounds(devs) {
     //map.fitBounds(bounds, {padding: [mapHeight*(1/6), mapWidth*(1/6)]});
     
     map.fitBounds(bounds, {padding: [50, 50]});
-}
+} // setBounds
 
 function HandleS3Data() {
 	//show devices on Leaflet map
@@ -472,7 +472,7 @@ function HandleS3Data() {
 			showDataTrajectories(data);
 		}
 	});
-}
+} //HandleS3Data
 
 function showDataTrajectories(inData) {
 	// save total geoJson object
