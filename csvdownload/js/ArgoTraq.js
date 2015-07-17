@@ -6,7 +6,7 @@ var test = {
 // AWS variables start
 var s3;
 var s3Data;
-var s3Bucket = 'argotraq-data';
+var s3Bucket = 'argotraq-csv';
 var amazonAccID = '940653267411'; //  AWS account ID
 var identityPoolID = 'us-east-1:d2737579-aaee-49c1-95c7-d78c0dd164ff';
 var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_ArgoTraqAuth_Role';
@@ -37,6 +37,7 @@ var retrievingData = false;
 
 // CSV
 var csv;
+var zip;
 
 //
 // Google Authorise First Go Start
@@ -263,22 +264,19 @@ function HandleAmazonUnauth() {
 			console.log(err);
 	});
 
-	HandleS3ToCsv();
+	HandleS3Csv();
 } // HandleAmazonUnauth
 
-function HandleS3ToCsv() {
+function HandleS3Csv() {
 	IndicateRetrevingData();
 
 	s3 = new AWS.S3();
 	console.log(s3);
 
-	console.log(getApproxTime());
-	csv = "key,timemillis,lat,lng,minAcceleration,maxAcceleration,minZ,maxZ,timestamp\n";
+	zip = new JSZip();
 	s3.listObjects({
 		Bucket: s3Bucket,
-		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/' + getApproxTime(),
 		Delimiter: 'first',
-		//EncodingType: 'url',
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
@@ -286,37 +284,40 @@ function HandleS3ToCsv() {
 			HandleS3Data(data);
 		}
 	});
-} //HandleS3ToCsv
+
+} // HandleS3ToCsv
 
 function HandleS3Data(inData) {
 	var counterDataObjects = inData.Contents.length;
 	console.log(counterDataObjects);
+	var keys = []
 	if (counterDataObjects != 0) {
 		for (var i = 0; i < inData.Contents.length; i++) {
-			var key = inData.Contents[i].Key.split('/')[1];
+			var key = inData.Contents[i].Key
+			keys[i] = key;
 			//console.log(key);
 			var timeMillis = key.split("-")[0];
-			var deviceId = key.split("-")[1];
-			//console.log(timeFrom.getTime());
-			//console.log(timeTo.getTime());
-			if (Number(timeMillis) >= timeFrom.getTime() && Number(timeMillis) <= timeTo.getTime()) {
-				console.log("retrieve data");
+			//console.log(timeMillis);
+			//console.log(new Date(parseInt(timeMillis)))
+			if (parseInt(timeMillis) >= timeFrom.getTime() && parseInt(timeMillis) <= timeTo.getTime()) {
+				console.log(key);
 				s3.getObject({
 					Bucket: s3Bucket,
-					Key: inData.Contents[i].Key,
+					Key: key,
 					ResponseCacheControl: i.toString(),
 				}, function(err, data) {
 					if (err) console.log(err);
 					else {
-						//console.log(data);
-						var entry = Uint8ArrayToObject(data.Body);
-						//console.log(entry);
-						csv += key + "," + timeMillis + "," + entry.lat + "," + entry.lng + "," + entry.minAcceleration + "," + entry.maxAcceleration + "," + entry.minZ + "," + entry.maxZ + "," + entry.timeStamp + "\n";
+						console.log(data);
+						//console.log(data.Body.toString());
+						//var csvFile = encodeURIComponent(data.Body.toString());
+						console.log(keys[data.CacheControl]);
+						zip.add(keys[data.CacheControl] + ".csv", data.Body.toString() + '\n');
 						counterDataObjects -= 1;
 						if (counterDataObjects == 0) {
 							console.log(counterDataObjects);
-							//Recursion if nextMarker is not undefined
-							checkNextMarker(inData.NextMarker, inData);
+							IndicateIndicateDataRetreved();
+							$('#export-button').removeAttr('style');
 						};
 					}
 				});
@@ -325,81 +326,28 @@ function HandleS3Data(inData) {
 				counterDataObjects -= 1;
 				if (counterDataObjects == 0) {
 					console.log(counterDataObjects);
-					//Recursion if nextMarker is not undefined
-					checkNextMarker(inData.NextMarker, inData);
+					IndicateIndicateDataRetreved();
+					$('#export-button').removeAttr('style');
 				};
 			}
 		}
-	} else {
+	}
+	else {
 		alert('No data found.');
 		IndicateIndicateDataRetreved();
 	}
 } // HandleS3Data
 
-function checkNextMarker(marker, inData) {
-	//Recursion if nextMarker is not undefined
-	if (marker !== undefined) {
-		console.log("next Objects");
-		s3.listObjects({
-			Bucket: s3Bucket,
-			Prefix: inData.Prefix,
-			Delimiter: 'subsequent',
-			Marker: inData.NextMarker,
-			//EncodingType: 'url',
-		}, function(err, data) {
-			if (err) console.log(err);
-			else {
-				console.log(data);
-				HandleS3Data(data);
-			}
-		});
-	}
-	else {
-		console.log("no next Objects");
-		// TODO next function > export CSV
-		console.log(csv);
-		IndicateIndicateDataRetreved();
-		exportCSV();
-	}
-}
-
-function exportCSV() {
-	var csvFile = encodeURIComponent(csv);
-	$('#export').removeAttr('style');
-	//$('#export-button').removeAttr('style');
-	$('#export-button').attr({
-		download: 'data.csv',
-		href: 'data:text/csv;charset=utf-8,' + csvFile,
-	});
+function exportZIP() {
+	content = zip.generate();
+	location.href = "data:application/zip;base64," + content;
 }
 
 $('#export').click(function() {
 	console.log("click");
-    //$('#export-button').click();
-    document.getElementById('export-button').click();
+	//$('#export-button').click();
+	document.getElementById('export-button').click();
 });
-
-function getApproxTime() {
-	var timeFromString = timeFrom.getTime().toString();
-	//console.log(timeFromString);
-	var timeToString = timeTo.getTime().toString();
-	//console.log(timeToString);
-	var timestring = "";
-	var digitcounter = 0;
-	var allequal = true;
-	var timelength = timeToString.length;
-	while (allequal) {
-		if (timeToString[13 - timelength] == timeFromString[13 - timelength]) {
-			timestring += timeToString[13 - timelength]
-			timelength -= 1;
-		}
-		else {
-			allequal = false;
-		}
-	}
-	//console.log(timestring);
-	return timestring;
-} // getApproxTime
 
 function Uint8ArrayToObject(arr) {
 	return JSON.parse(String.fromCharCode.apply(null, arr))
@@ -418,9 +366,11 @@ function IndicateIndicateDataRetreved() { // Indicate that data has now been ret
 var timeFrom = new Date()
 timeFrom.setDate(timeFrom.getDate() - 1);
 $('#datepickerFrom').val(getDateYMD(timeFrom));
+updateTimeFrom($('#datepickerFrom').val());
 
 var timeTo = new Date();
 $('#datepickerTo').val(getDateYMD(timeTo));
+updateTimeTo($('#datepickerTo').val());
 
 $('#datepickerFrom').attr('min', getDateYMD(new Date(1)));
 $('#datepickerFrom').attr('max', getDateYMD(timeTo));
