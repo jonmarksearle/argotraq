@@ -296,7 +296,7 @@ function HandleS3Data(inData) {
 			var key = inData.Contents[i].Key
 			keys[i] = key;
 			//console.log(key);
-			var timeMillis = key.split("-")[0];
+			var timeMillis = key.split("/")[1];
 			//console.log(timeMillis);
 			//console.log(new Date(parseInt(timeMillis)))
 			if (parseInt(timeMillis) >= timeFrom.getTime() && parseInt(timeMillis) <= timeTo.getTime()) {
