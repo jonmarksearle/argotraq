@@ -18,6 +18,8 @@ import calendar
 import simplejson
 import json
 import csv
+import gzip
+import os
 
 # init Global variables
 s3 = boto3.resource('s3')
@@ -78,12 +80,8 @@ def dateToMillis(t):
     strunc = dateToTime(t)
     return timeToMillis(strunc)
 
-##now = time.gmtime()
-##print now
-##millis = timeToMillis(now)
-##print millis
-##day = millisToDate(millis)
-##print day
+def todayMillis():
+    return dateToMillis(millisToDate(timeToMillis(time.gmtime())))
 
 def checkExistingObjects():
     """TODO: Check existing objects and don't load and upload them again.
@@ -99,23 +97,22 @@ def createNewObjects():
     print "createNewObjects"
     before = timeToMillis(time.gmtime())
     # Iterate through bucket: create dictionaries for devices
-    for obj in bucket.objects.all():
+    for obj in bucket.objects.filter(Prefix=key_delimiter+'/'+meta_delimiter):
         key = obj.key.split('/')
-        if (key[0] == key_delimiter):
-            timemillis = key[1].split('-')[0]
-            deviceid = key[1].split('-')[1]
-            if (timemillis == meta_delimiter):
-                #print obj.key
-                objects[deviceid] = {}
+        timemillis = key[1].split('-')[0]
+        deviceid = key[1].split('-')[1]
+        if (timemillis == meta_delimiter):
+            #print obj.key
+            objects[deviceid] = {}
     print "meta created"
     
     # Iterate through bucket: create in devices arrays for each day
-    for obj in bucket.objects.all():
+    for obj in bucket.objects.filter(Prefix=key_delimiter):
         key = obj.key.split('/')
-        if (key[0] == key_delimiter):
-            timemillis = key[1].split('-')[0]
-            deviceid = key[1].split('-')[1]
-            if not(timemillis == meta_delimiter):
+        timemillis = key[1].split('-')[0]
+        deviceid = key[1].split('-')[1]
+        if not(timemillis == meta_delimiter):
+            if (int(timemillis) < int(todayMillis())):
                 day = millisToDate(int(timemillis))
                 #print day
                 if not day in objects[deviceid]:
@@ -125,21 +122,25 @@ def createNewObjects():
     print "days created"
     
     # Iterate through bucket and dump data into dictionary > array
-    for obj in bucket.objects.all():
+    for obj in bucket.objects.filter(Prefix=key_delimiter):
         key = obj.key.split('/')
-        if (key[0] == key_delimiter):
-            timemillis = key[1].split('-')[0]
-            deviceid = key[1].split('-')[1]
-            if not(timemillis == meta_delimiter):
+        timemillis = key[1].split('-')[0]
+        deviceid = key[1].split('-')[1]
+        if not(timemillis == meta_delimiter):
+            if (int(timemillis) < int(todayMillis())):
                 day = millisToDate(int(timemillis))
                 tmp = {}
                 tmp['deviceid'] = deviceid
                 tmp['timemillis'] = timemillis
                 tmp.update(simplejson.loads(obj.get()['Body'].read()))
                 objects[deviceid][day].append(tmp)
+                #delete object
+                #obj.delete()
 
     after = timeToMillis(time.gmtime())
     print (after-before)/1000
+
+    print objects
 
 def loadLocalObjects():
     """Function to use if objects dictionary was saved to local filesystem.
@@ -165,23 +166,33 @@ def createCSVFiles():
                 for key,value in entry.iteritems():
                     row.append(value)
                 csvfile.append(row)
-            filename = str(dateToMillis(daykey))+"-"+devkey
-            outfile = open('csvs/'+filename+".csv",'w')
-            outcsv = csv.writer(outfile)
-            outcsv.writerows(csvfile)
-            outfile.close()
-            #TODO upload file to s3
-            uploadfile = open('csvs/'+filename+".csv",'r')
+            # save compressed files
+            filename = devkey+'/'+str(dateToMillis(daykey))
+            if not os.path.exists('csvs/'+devkey):
+                os.makedirs('csvs/'+devkey)
+            outcsvstring = ''
+            for item in csvfile:
+                outcsvstring += ','.join([str(x) for x in item])
+                outcsvstring += '\n'
+            zip_out = gzip.open('csvs/'+filename+'.csv.gz','wb')
+            zip_out.write(outcsvstring)
+            zip_out.close()
+            # upload file to s3
+            uploadfile = open('csvs/'+filename+".csv.gz",'r')
             s3.Bucket(new_bucket_name).put_object(Key=filename, Body=uploadfile)
 
 def listUploadedFiles():
     for obj in new_bucket.objects.all():
         #print obj.get()['Body'].read()
         print obj.key
+
+def deleteProcessedFiles():
+    # TODO
+    print 'delete processes files'
     
 def main():
     #checkExistingObjects()
-    #createNewObjects() 
+    #createNewObjects()
     loadLocalObjects()
     createCSVFiles()
     listUploadedFiles()
