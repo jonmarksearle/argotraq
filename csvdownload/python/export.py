@@ -25,7 +25,7 @@ import os
 s3 = boto3.resource('s3')
 # Data Bucket
 bucket_name = 'argotraq-data'
-key_delimiter = 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14'
+cognito_id = 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14'
 meta_delimiter = 'meta'
 bucket_exists = False
 # CSVGZ Bucket
@@ -95,7 +95,7 @@ def createNewObjects():
     print "createNewObjects"
     before = timeToMillis(time.gmtime())
     # Iterate through bucket: create dictionaries for devices
-    for obj in bucket.objects.filter(Prefix=key_delimiter+'/'+meta_delimiter):
+    for obj in bucket.objects.filter(Prefix=cognito_id+'/'+meta_delimiter):
         key = obj.key.split('/')
         timemillis = key[1].split('-')[0]
         deviceid = key[1].split('-')[1]
@@ -105,7 +105,7 @@ def createNewObjects():
     print "meta created"
     
     # Iterate through bucket: create in devices arrays for each day
-    for obj in bucket.objects.filter(Prefix=key_delimiter):
+    for obj in bucket.objects.filter(Prefix=cognito_id):
         key = obj.key.split('/')
         timemillis = key[1].split('-')[0]
         deviceid = key[1].split('-')[1]
@@ -120,7 +120,7 @@ def createNewObjects():
     print "days created"
     
     # Iterate through bucket and dump data into dictionary > array
-    for obj in bucket.objects.filter(Prefix=key_delimiter):
+    for obj in bucket.objects.filter(Prefix=cognito_id):
         key = obj.key.split('/')
         timemillis = key[1].split('-')[0]
         deviceid = key[1].split('-')[1]
@@ -165,9 +165,9 @@ def createCSVFiles():
                     row.append(value)
                 csvfile.append(row)
             # save compressed files
-            filename = devkey+'/'+str(dateToMillis(daykey))
-            if not os.path.exists('csvs/'+devkey):
-                os.makedirs('csvs/'+devkey)
+            filename = cognito_id+'/'+devkey+'/'+str(dateToMillis(daykey))
+            if not os.path.exists('csvs/'+cognito_id+'/'+devkey):
+                os.makedirs('csvs/'+cognito_id+'/'+devkey)
             outcsvstring = ''
             for item in csvfile:
                 outcsvstring += ','.join([str(x) for x in item])
@@ -181,7 +181,6 @@ def createCSVFiles():
 
 def listUploadedFiles():
     for obj in new_bucket.objects.all():
-        #print obj.get()['Body'].read()
         print obj.key
 
 def deleteProcessedFiles():
@@ -190,8 +189,8 @@ def deleteProcessedFiles():
     
 def main():
     #checkExistingObjects()
-    #createNewObjects()
-    loadLocalObjects()
+    createNewObjects()
+    #loadLocalObjects()
     createCSVFiles()
     listUploadedFiles()
     
