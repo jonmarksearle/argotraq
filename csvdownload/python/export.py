@@ -29,6 +29,7 @@ bucket_exists = False
 # CSVGZ Bucket
 new_bucket_name = 'argotraq-csv'
 new_bucket_exists = False
+
 # Check if Buckets exists
 for entries in s3.buckets.all():
     if (entries.name == bucket_name):
@@ -45,6 +46,7 @@ for entries in s3.buckets.all():
     # create new bucket
     # s3.create_bucket(Bucket=new_bucket_name)
 new_bucket = s3.Bucket(new_bucket_name)
+
 # Existing CSV data
 csvobject = {}
 # Existing data
