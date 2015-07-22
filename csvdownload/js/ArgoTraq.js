@@ -312,7 +312,7 @@ function HandleS3Data(inData) {
 						//console.log(data.Body.toString());
 						//var csvFile = encodeURIComponent(data.Body.toString());
 						console.log(keys[data.CacheControl]);
-						zip.add(keys[data.CacheControl] + ".csv", data.Body.toString() + '\n');
+						zip.file(keys[data.CacheControl] + ".csv.gz", data.Body, {binary: true});
 						counterDataObjects -= 1;
 						if (counterDataObjects == 0) {
 							console.log(counterDataObjects);
