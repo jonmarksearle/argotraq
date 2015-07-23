@@ -52,8 +52,12 @@ csvobject = {}
 # Existing data
 objects = {}
 
+hourToMillis = 3600000
+hour10ToMillis = hourToMillis*10
+hour24ToMillis = hourToMillis*24
+
 def timeToMillis(t):
-    return calendar.timegm(t)*1000
+    return int(calendar.timegm(t)*1000)-hour10ToMillis
 
 def millisToTime(t):
     return time.gmtime(int(t)/1000)
@@ -71,7 +75,7 @@ def isotimeToTime(t):
     return time.strptime(t,'%Y-%m-%dT%H:%M:%SZ')
 
 def millisToDate(t):
-    strunc = millisToTime(t)
+    strunc = millisToTime(t+hour10ToMillis)
     return timeToDate(strunc)
 
 def dateToMillis(t):
@@ -79,12 +83,9 @@ def dateToMillis(t):
     return timeToMillis(strunc)
 
 def todayMillis():
-    return dateToMillis(millisToDate(timeToMillis(time.gmtime())))
+    return int(dateToMillis(millisToDate(timeToMillis(time.gmtime()))))+hour10ToMillis
 
-def checkExistingObjects():
-    """TODO: Check existing objects and don't load and upload them again.
-
-    """
+print timeToIsotime(time.gmtime())
 
 def createNewObjects():
     """Load existing objects and save them into on dictionary.
@@ -138,7 +139,7 @@ def createNewObjects():
     after = timeToMillis(time.gmtime())
     print (after-before)/1000
 
-    print objects
+    #print objects
 
 def loadLocalObjects():
     """Function to use if objects dictionary was saved to local filesystem.
@@ -182,17 +183,12 @@ def createCSVFiles():
 def listUploadedFiles():
     for obj in new_bucket.objects.all():
         print obj.key
-
-def deleteProcessedFiles():
-    # TODO
-    print 'delete processes files'
     
 def main():
-    #checkExistingObjects()
     createNewObjects()
     #loadLocalObjects()
     createCSVFiles()
-    listUploadedFiles()
+    #listUploadedFiles()
     
 if __name__ == "__main__":
    main()
