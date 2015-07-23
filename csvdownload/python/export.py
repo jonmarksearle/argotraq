@@ -1,4 +1,4 @@
-﻿# Name:         export.py
+# Name:         export.py
 # Author:       Heinrich Löwen
 # Version:      1.0
 # Description:  ...
