@@ -509,20 +509,18 @@ function HandleS3Data() {
 
 function showDataTrajectoriesFromCsv(inData) {
 	var counterDataObjects = inData.Contents.length;
-	var keys = []
+	var pickerBeginTime = displayedTimePoint.getTime() - displayedLastHours;
+	var pickerEndTime = displayedTimePoint.getTime();
+	console.log(new Date(pickerBeginTime).getTime(), new Date(pickerEndTime).getTime());
 	if (counterDataObjects != 0) {
 		for (var i = 0; i < inData.Contents.length; i++) {
 			var key = inData.Contents[i].Key;
-			keys[i] = key;
 			//console.log(key);
 			var timeMillis = parseInt(key.split('/')[2]);
 
 			var csvBeginTime = timeMillis;
 			var csvEndTime = timeMillis + (24 * hoursToMillis) - 60000;
 			//console.log(new Date(csvBeginTime), new Date(csvEndTime));
-			var pickerBeginTime = displayedTimePoint.getTime() - displayedLastHours;
-			var pickerEndTime = displayedTimePoint.getTime();
-			//console.log(new Date(pickerBeginTime), new Date(pickerEndTime));
 			//console.log((csvBeginTime >= pickerBeginTime && csvBeginTime <= pickerEndTime), (csvEndTime >= pickerBeginTime && csvEndTime <= pickerEndTime), (pickerBeginTime >= csvBeginTime && pickerBeginTime <= csvEndTime), (pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime));
 			if (
 				(csvBeginTime >= pickerBeginTime && csvBeginTime <= pickerEndTime) ||
@@ -536,19 +534,30 @@ function showDataTrajectoriesFromCsv(inData) {
 					Key: inData.Contents[i].Key,
 					ResponseCacheControl: i.toString(),
 					ResponseContentEncoding: 'gzip',
-					ResponseContentType: 'application/octet-stream',
 				}, function(err, data) {
 					if (err) console.log(err);
 					else {
 						console.log(data);
-						//var zip = new JSZip();
-						//zip.file(keys[data.CacheControl].split('/')[2] + ".csv.gz", data.Body, {binary: true}).asText();
-						//console.log(zip);
-						var csv = data.Body.toString());
+						var csv = data.Body.toString().split('\n');
+						//console.log(csv);
+						for (var j = 1; j < csv.length; j++) {
+							var csvRow = csv[j].split(',');
+							if (csvRow != '') {
+								//console.log(csvRow);
+								if (csvRow[7] >= pickerBeginTime && csvRow[7] < pickerEndTime) {
+									var deviceIndex;
+									for (var k = 0; k < geoJsonTrajectories.length; k++) {
+										if (geoJsonTrajectories[k].properties.deviceId == csvRow[4]) deviceIndex = k;
+									}
+									geoJsonTrajectories[deviceIndex].geometry.coordinates.push([csvRow[6], csvRow[5], csvRow[7]])
+								}
+							}
+						}
 						counterDataObjects -= 1;
 						if (counterDataObjects == 0) {
 							console.log(counterDataObjects);
 							console.log('if move on');
+							HandleS3DataVisualization();
 						};
 					}
 				})
