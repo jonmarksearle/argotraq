@@ -2,6 +2,8 @@
 var s3;
 var s3Data;
 var s3Bucket = 'argotraq-data';
+var s3CSVBucket = 'argotraq-csv';
+var cognitoID = 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14';
 var amazonAccID = '940653267411'; //  AWS account ID
 var identityPoolID = 'us-east-1:d2737579-aaee-49c1-95c7-d78c0dd164ff';
 var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_ArgoTraqAuth_Role';
@@ -27,7 +29,7 @@ var deviceIds = [];
 var displayedLastHours;
 var displayedTimePoint = new Date();
 var hoursToMillis = 3600000;
-var initialRun = false;
+var initialRun = true;
 var retrievingData = false;
 // BBOX
 var minLat;
@@ -330,20 +332,34 @@ function HandleAmazonUnauth() {
 	HandleS3MetaData();
 } // HandleAmazonUnauth
 
+$('#timeslider').val(24);
+updateSliderInput($('#timeslider').val());
+$('#datepicker').val(getDateYMD(new Date()));
+$('#datepicker').attr('min', getDateYMD(new Date(1)));
+$('#datepicker').attr('max', getDateYMD(new Date()));
+$('#timepicker').val(getTimeHM(new Date()));
+updateDateTimeInput();
+
 function HandleS3MetaData() {
-	initialRun = true;
+	if (!initialRun) {
+		console.log("not initial run: clean layers!")
+		geoJsonLayer.clearLayers();
+		deviceIds = [];
+		geoJsonDevices = [];
+		geoJsonTrajectories = [];
+		console.log("display data with new properties");
+	};
+
+	initialRun = false;
 
 	IndicateRetrevingData();
 
 	s3 = new AWS.S3();
 	console.log(s3);
-	if (!displayedLastHours) {
-		console.log("set displayHours to default 24hours");
-		displayedLastHours = hoursToMillis * 24 /*hours24*/ ;
-	}
+
 	s3.listObjects({
 		Bucket: 'argotraq-data',
-		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/meta'
+		Prefix: cognitoID + '/meta'
 	}, function(err, data) {
 		if (err) console.log(err);
 		else {
@@ -415,17 +431,19 @@ function setBounds(devs) {
 		if (lat >= maxLat) maxLat = lat;
 	}
 	console.log("BBOX: " + minLng + " " + maxLng + " " + minLat + " " + maxLat);
-	
+
 	var southWest = new L.LatLng(maxLat, minLng),
-    northEast = new L.LatLng(minLat, maxLng),
-    bounds = new L.LatLngBounds(southWest, northEast);
-    
-    // 2/3
-    //var mapWidth = document.getElementById('map').offsetWidth;
-    //var mapHeight = document.getElementById('map').offsetHeight;
-    //map.fitBounds(bounds, {padding: [mapHeight*(1/6), mapWidth*(1/6)]});
-    
-    map.fitBounds(bounds, {padding: [50, 50]});
+		northEast = new L.LatLng(minLat, maxLng),
+		bounds = new L.LatLngBounds(southWest, northEast);
+
+	// 2/3
+	//var mapWidth = document.getElementById('map').offsetWidth;
+	//var mapHeight = document.getElementById('map').offsetHeight;
+	//map.fitBounds(bounds, {padding: [mapHeight*(1/6), mapWidth*(1/6)]});
+
+	map.fitBounds(bounds, {
+		padding: [50, 50]
+	});
 } // setBounds
 
 function HandleS3Data() {
@@ -462,19 +480,100 @@ function HandleS3Data() {
 	console.log(geoJsonTrajectories);
 	console.log(getApproxHours());
 
-	s3.listObjects({
-		Bucket: s3Bucket,
-		Prefix: 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14/' + getApproxHours(),
-	}, function(err, data) {
-		if (err) console.log(err);
-		else {
-			console.log(data);
-			showDataTrajectories(data);
-		}
-	});
+	if (displayedTimePoint.getTime() >= (new Date().getTime() - (24 * hoursToMillis))) {
+		s3.listObjects({
+			Bucket: s3Bucket,
+			Prefix: cognitoID + '/' + getApproxHours(),
+		}, function(err, data) {
+			if (err) console.log(err);
+			else {
+				console.log(data);
+				showDataTrajectoriesFromJson(data);
+			}
+		});
+	}
+	else {
+		console.log('longer than 24 hours ago: use csv data');
+		s3.listObjects({
+			Bucket: s3CSVBucket,
+		}, function(err, data) {
+			if (err) console.log(err);
+			else {
+				console.log(data);
+				showDataTrajectoriesFromCsv(data);
+			}
+		})
+
+	}
 } //HandleS3Data
 
-function showDataTrajectories(inData) {
+function showDataTrajectoriesFromCsv(inData) {
+	var counterDataObjects = inData.Contents.length;
+	var pickerBeginTime = displayedTimePoint.getTime() - displayedLastHours;
+	var pickerEndTime = displayedTimePoint.getTime();
+	console.log(new Date(pickerBeginTime).getTime(), new Date(pickerEndTime).getTime());
+	if (counterDataObjects != 0) {
+		for (var i = 0; i < inData.Contents.length; i++) {
+			var key = inData.Contents[i].Key;
+			//console.log(key);
+			var timeMillis = parseInt(key.split('/')[2]);
+
+			var csvBeginTime = timeMillis;
+			var csvEndTime = timeMillis + (24 * hoursToMillis) - 60000;
+			//console.log(new Date(csvBeginTime), new Date(csvEndTime));
+			//console.log((csvBeginTime >= pickerBeginTime && csvBeginTime <= pickerEndTime), (csvEndTime >= pickerBeginTime && csvEndTime <= pickerEndTime), (pickerBeginTime >= csvBeginTime && pickerBeginTime <= csvEndTime), (pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime));
+			if (
+				(csvBeginTime >= pickerBeginTime && csvBeginTime <= pickerEndTime) ||
+				(csvEndTime >= pickerBeginTime && csvEndTime <= pickerEndTime) ||
+				(pickerBeginTime >= csvBeginTime && pickerBeginTime <= csvEndTime) ||
+				(pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime)
+			) {
+				//TODO verarbeite CSV dateien hier
+				s3.getObject({
+					Bucket: s3CSVBucket,
+					Key: inData.Contents[i].Key,
+					ResponseCacheControl: i.toString(),
+					ResponseContentEncoding: 'gzip',
+				}, function(err, data) {
+					if (err) console.log(err);
+					else {
+						console.log(data);
+						var csv = data.Body.toString().split('\n');
+						//console.log(csv);
+						for (var j = 1; j < csv.length; j++) {
+							var csvRow = csv[j].split(',');
+							if (csvRow != '') {
+								//console.log(csvRow);
+								if (csvRow[7] >= pickerBeginTime && csvRow[7] < pickerEndTime) {
+									var deviceIndex;
+									for (var k = 0; k < geoJsonTrajectories.length; k++) {
+										if (geoJsonTrajectories[k].properties.deviceId == csvRow[4]) deviceIndex = k;
+									}
+									geoJsonTrajectories[deviceIndex].geometry.coordinates.push([csvRow[6], csvRow[5], csvRow[7]])
+								}
+							}
+						}
+						counterDataObjects -= 1;
+						if (counterDataObjects == 0) {
+							console.log(counterDataObjects);
+							console.log('if move on');
+							HandleS3DataVisualization();
+						};
+					}
+				})
+			}
+			else {
+				counterDataObjects -= 1;
+				if (counterDataObjects == 0) {
+					console.log(counterDataObjects);
+					console.log('else move on');
+				};
+			}
+		}
+	}
+} // showDataTrajectoriesFromCsv
+
+function showDataTrajectoriesFromJson(inData) {
 	// save total geoJson object
 	//FIXME: error, because entries of geoJsonObj are created in callback 
 	//TODO: preconfigure geoJsonObj with meta object points and then delete if-else-block
@@ -483,46 +582,49 @@ function showDataTrajectories(inData) {
 	console.log(counterDataObjects);
 	var deviceIndices = []
 	if (counterDataObjects != 0) {
-	for (var i = 0; i < inData.Contents.length; i++) {
-		var key = inData.Contents[i].Key.split('/')[1];
-		//console.log(key);
-		var timeMillis = key.split("-")[0];
-		var deviceId = key.split("-")[1];
-		//console.log(deviceId);
-		// refine selection of exactly last 24 hours
-		if ((Number(timeMillis) > (displayedTimePoint.getTime() - displayedLastHours)) && (Number(timeMillis) <= displayedTimePoint.getTime())) {
-			// save coordinates of the objects to existing linestring
-			// linestring needs to be ordered by timeStamp
-			var deviceIndex;
-			for (var j = 0; j < geoJsonTrajectories.length; j++) {
-				//console.log(geoJsonObj[j]);
-				if (geoJsonTrajectories[j].properties.deviceId == deviceId) deviceIndex = j;
-			}
-			deviceIndices[i] = deviceIndex;
-			s3.getObject({
-				Bucket: s3Bucket,
-				Key: inData.Contents[i].Key,
-				ResponseCacheControl: i.toString(),
-			}, function(err, data) {
-				if (err) console.log(err);
-				else {
-					//console.log(data);
-					var entry = Uint8ArrayToObject(data.Body);
-					// save coordinates to appropriate device
-					geoJsonTrajectories[deviceIndices[data.CacheControl]].geometry.coordinates.push([entry.lng, entry.lat, entry.timeStamp])
-					counterDataObjects -= 1;
-					if (counterDataObjects == 0) {
-						console.log(counterDataObjects);
-						HandleS3DataVisualization();
-					};
+		for (var i = 0; i < inData.Contents.length; i++) {
+			var key = inData.Contents[i].Key.split('/')[1];
+			//console.log(key);
+			var timeMillis = key.split("-")[0];
+			var deviceId = key.split("-")[1];
+			//console.log(deviceId);
+			// refine selection of exactly last 24 hours
+			if ((Number(timeMillis) > (displayedTimePoint.getTime() - displayedLastHours)) && (Number(timeMillis) <= displayedTimePoint.getTime())) {
+				//if ((Number(timeMillis) > (new Date().getTime() - (24*hoursToMillis)))) {
+				// save coordinates of the objects to existing linestring
+				// linestring needs to be ordered by timeStamp
+				console.log(key);
+				var deviceIndex;
+				for (var j = 0; j < geoJsonTrajectories.length; j++) {
+					//console.log(geoJsonObj[j]);
+					if (geoJsonTrajectories[j].properties.deviceId == deviceId) deviceIndex = j;
 				}
-			});
-		}
-		else {
-			counterDataObjects -= 1;
+				deviceIndices[i] = deviceIndex;
+				s3.getObject({
+					Bucket: s3Bucket,
+					Key: inData.Contents[i].Key,
+					ResponseCacheControl: i.toString(),
+				}, function(err, data) {
+					if (err) console.log(err);
+					else {
+						//console.log(data);
+						var entry = Uint8ArrayToObject(data.Body);
+						// save coordinates to appropriate device
+						geoJsonTrajectories[deviceIndices[data.CacheControl]].geometry.coordinates.push([entry.lng, entry.lat, entry.timeStamp])
+						counterDataObjects -= 1;
+						if (counterDataObjects == 0) {
+							console.log(counterDataObjects);
+							HandleS3DataVisualization();
+						};
+					}
+				});
+			}
+			else {
+				counterDataObjects -= 1;
+			}
 		}
 	}
-	} else {
+	else {
 		HandleS3DataVisualization();
 	}
 } //showDataTrajectories
@@ -559,7 +661,26 @@ function getApproxHours() {
 		}
 	}
 	return timestring;
-} //getApprox24hours
+} //getApproxHours
+
+function getApprox24Hours() {
+	var currentTime = (new Date().getTime()).toString();
+	var pastTime = (new Date().getTime() - (24 * hoursToMillis)).toString();
+	var timestring = "";
+	var digitcounter = 0;
+	var allequal = true;
+	var timelength = currentTime.length;
+	while (allequal) {
+		if (currentTime[13 - timelength] == pastTime[13 - timelength]) {
+			timestring += currentTime[13 - timelength]
+			timelength -= 1;
+		}
+		else {
+			allequal = false;
+		}
+	}
+	return timestring;
+}
 
 function Uint8ArrayToObject(arr) {
 	return JSON.parse(String.fromCharCode.apply(null, arr))
@@ -579,6 +700,7 @@ function sleep(milliseconds) {
 //
 
 function updateSliderInput(val) {
+	console.log('timeslider: ' + val);
 	displayedLastHours = val * hoursToMillis;
 }
 
@@ -589,41 +711,14 @@ function updateDateTimeInput() {
 
 function IndicateRetrevingData() { // Indicate that data is now being retreived
 	retrievingData = true;
+	$('#updateButton').attr('disabled', 'disabled');
 	$("#divLoadingMsg").html("Retreving data from cloud ...");
 }
 
 function IndicateIndicateDataRetreved() { // Indicate that data has now been retreived
 	retrievingData = false;
+	$('#updateButton').removeAttr('disabled');
 	$("#divLoadingMsg").html("");
-}
-
-$('#datepicker').val(getDateYMD(new Date()));
-$('#datepicker').attr('min', getDateYMD(new Date(1)));
-$('#datepicker').attr('max', getDateYMD(new Date()));
-
-$('#timepicker').val(getTimeHM(new Date()));
-
-
-function adjustDateTime() {
-	if (!initialRun) {
-		// FIXME: This doesn't seem to be working too well
-		console.log(" run 'Go Anonymous' first.");
-		// window.alert("Please run 'Sign In via Google' or 'Go Anonymous' first."); // Shouldn't require the user to log-in again.
-	}
-	else if (retrievingData) {
-		console.log("Wait until previous data are retrieved.");
-		// window.alert("Wait until previous data are retrieved."); // this is just annoying 
-	}
-	else {
-		displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val());
-		console.log("removeLayer");
-		geoJsonLayer.clearLayers();
-		deviceIds = [];
-		geoJsonDevices = [];
-		geoJsonTrajectories = [];
-		console.log("display data with new properties");
-		HandleS3MetaData();
-	};
 }
 
 function getDateYMD(val) {

@@ -32,7 +32,7 @@
     <!-- Timeslider -->    <!-- Datepicker -->
     <form oninput="timesliderOutput.value=timeslider.value">
 
-        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" value="24" onchange="updateSliderInput(this.value);">
+        <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" onchange="updateSliderInput(this.value);">
         <output name="timesliderOutput" for="timesliderInput">24</output> hours to 
 
         <input id="datepicker" type="date" onchange="updateDateTimeInput();" > 
@@ -40,7 +40,7 @@
 
          <!--  onchange="updateSliderInput(this.value);"> -->
     </form>
-    <button onClick="adjustDateTime();">Update</button>
+    <button id="updateButton" onClick="HandleS3MetaData();" disabled="disabled">Update</button>
 
     <!-- Map -->
     <div id="map" style="width: 700px; height: 500px;"></div>
@@ -53,6 +53,7 @@
 
     <script src="lib/leaflet/leaflet.js"></script>
     <script type="text/javascript" src="lib/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="js/jszip.js"></script>
     <script type="text/javascript" src="js/ArgoTraq.js"></script>
 
 </body>
