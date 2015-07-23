@@ -509,29 +509,56 @@ function HandleS3Data() {
 
 function showDataTrajectoriesFromCsv(inData) {
 	var counterDataObjects = inData.Contents.length;
+	var keys = []
 	if (counterDataObjects != 0) {
 		for (var i = 0; i < inData.Contents.length; i++) {
 			var key = inData.Contents[i].Key;
+			keys[i] = key;
 			//console.log(key);
 			var timeMillis = parseInt(key.split('/')[2]);
 
 			var csvBeginTime = timeMillis;
-			var csvEndTime = timeMillis+(24*hoursToMillis)-60000;
-			console.log(new Date(csvBeginTime), new Date(csvEndTime));
+			var csvEndTime = timeMillis + (24 * hoursToMillis) - 60000;
+			//console.log(new Date(csvBeginTime), new Date(csvEndTime));
 			var pickerBeginTime = displayedTimePoint.getTime() - displayedLastHours;
 			var pickerEndTime = displayedTimePoint.getTime();
-			console.log(new Date(pickerBeginTime), new Date(pickerEndTime));
-			console.log((csvBeginTime >= pickerBeginTime && csvBeginTime <= pickerEndTime),
-				(csvEndTime >= pickerBeginTime && csvEndTime <= pickerEndTime),
-				(pickerBeginTime >= csvBeginTime && pickerBeginTime <= csvEndTime),
-				(pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime));
+			//console.log(new Date(pickerBeginTime), new Date(pickerEndTime));
+			//console.log((csvBeginTime >= pickerBeginTime && csvBeginTime <= pickerEndTime), (csvEndTime >= pickerBeginTime && csvEndTime <= pickerEndTime), (pickerBeginTime >= csvBeginTime && pickerBeginTime <= csvEndTime), (pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime));
 			if (
 				(csvBeginTime >= pickerBeginTime && csvBeginTime <= pickerEndTime) ||
 				(csvEndTime >= pickerBeginTime && csvEndTime <= pickerEndTime) ||
 				(pickerBeginTime >= csvBeginTime && pickerBeginTime <= csvEndTime) ||
-				(pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime) 
+				(pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime)
 			) {
-				console.log('inside if: ' + key);
+				//TODO verarbeite CSV dateien hier
+				s3.getObject({
+					Bucket: s3CSVBucket,
+					Key: inData.Contents[i].Key,
+					ResponseCacheControl: i.toString(),
+					ResponseContentEncoding: 'gzip',
+					ResponseContentType: 'application/octet-stream',
+				}, function(err, data) {
+					if (err) console.log(err);
+					else {
+						console.log(data);
+						//var zip = new JSZip();
+						//zip.file(keys[data.CacheControl].split('/')[2] + ".csv.gz", data.Body, {binary: true}).asText();
+						//console.log(zip);
+						var csv = data.Body.toString());
+						counterDataObjects -= 1;
+						if (counterDataObjects == 0) {
+							console.log(counterDataObjects);
+							console.log('if move on');
+						};
+					}
+				})
+			}
+			else {
+				counterDataObjects -= 1;
+				if (counterDataObjects == 0) {
+					console.log(counterDataObjects);
+					console.log('else move on');
+				};
 			}
 		}
 	}
