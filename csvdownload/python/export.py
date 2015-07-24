@@ -162,6 +162,7 @@ def createCSVFiles():
         for daykey in objects[devkey].keys():
             csvfile = []
             csvfile.append(['maxZ','maxAcceleration','timeStamp','minZ','deviceid','lat','lng','timemillis','minAcceleration'])
+#CHANGETO:       csvfile.append(['lat','lng','maxAcceleration','minAcceleration','maxAccelerationWithG','minAccelerationWithG','maxSpeed','minSpeed','timeStamp'])
             for entry in objects[devkey][daykey]:
                 row = []
                 for key,value in entry.iteritems():
