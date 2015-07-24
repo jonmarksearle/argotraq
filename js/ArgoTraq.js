@@ -545,6 +545,12 @@ function showDataTrajectoriesFromCsv(inData) {
 						console.log(data);
 						var csv = data.Body.toString().split('\n');
 						//console.log(csv);
+						// FIXME: Ordinals are used which might become a problem if 
+						// TODO:
+						// pos_lat = find 'lat' in csv[0]
+						// pos_lng = find 'lng' in csv[0]
+						// pos_tim = find 'timeStamp' in csv[0]
+						//
 						for (var j = 1; j < csv.length; j++) {
 							var csvRow = csv[j].split(',');
 							if (csvRow != '') {
