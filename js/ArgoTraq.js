@@ -3,6 +3,11 @@ var s3;
 var s3Data;
 var s3Bucket = 'argotraq-data';
 var s3CSVBucket = 'argotraq-csv';
+
+var cognitoIDList = ['us-east-1:0035d5b5-607e-483a-96b7-331a597b44c0',
+                     'us-east-1:9d8c5740-8fe4-471a-b112-8cd29ec3c684',
+                     'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14'];
+
 var cognitoID = 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14';
 var amazonAccID = '940653267411'; //  AWS account ID
 var identityPoolID = 'us-east-1:d2737579-aaee-49c1-95c7-d78c0dd164ff';
