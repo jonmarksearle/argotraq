@@ -12,6 +12,10 @@
 #       [default]
 #       region=us-east-1
 
+# Issues: 
+# - Should actually build the attribute names list from the json objects and use this as the csv column headers
+# 
+
 import boto3
 import time
 import calendar
