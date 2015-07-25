@@ -513,7 +513,7 @@ function HandleS3Data() {
 		console.log('longer than 24 hours ago: use csv data');
 		s3.listObjects({
 			Bucket: s3CSVBucket,
-			Prefix: cognitoID + '/' + getApproxHours(),
+			Prefix: cognitoID,
 		}, function(err, data) {
 			if (err) console.log(err);
 			else {
