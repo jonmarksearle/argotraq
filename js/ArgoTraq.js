@@ -513,6 +513,7 @@ function HandleS3Data() {
 		console.log('longer than 24 hours ago: use csv data');
 		s3.listObjects({
 			Bucket: s3CSVBucket,
+			Prefix: cognitoID + '/' + getApproxHours(),
 		}, function(err, data) {
 			if (err) console.log(err);
 			else {
@@ -528,16 +529,16 @@ function showDataTrajectoriesFromCsv(inData) {
 	var counterDataObjects = inData.Contents.length;
 	var pickerBeginTime = displayedTimePoint.getTime() - displayedLastHours;
 	var pickerEndTime = displayedTimePoint.getTime();
-	console.log(new Date(pickerBeginTime).getTime(), new Date(pickerEndTime).getTime());
+	//console.log(new Date(pickerBeginTime).getTime(), new Date(pickerEndTime).getTime());
 	var deviceIndices = []
 	if (counterDataObjects != 0) {
 		for (var i = 0; i < inData.Contents.length; i++) {
 			var key = inData.Contents[i].Key;
-			//console.log(key);
+			console.log(key);
 			var timeMillis = parseInt(key.split('/')[2]);
 			//console.log(timeMillis);
 			var deviceId = key.split('/')[1];
-			//console.log(deviceId);
+			console.log(deviceId);
 			
 			var csvBeginTime = timeMillis;
 			var csvEndTime = timeMillis + (24 * hoursToMillis) - 60000;
@@ -552,7 +553,7 @@ function showDataTrajectoriesFromCsv(inData) {
 				//TODO verarbeite CSV dateien hier
 				var deviceIndex;
 				for (var j = 0; j < geoJsonTrajectories.length; j++) {
-					//console.log(geoJsonObj[j]);
+					console.log(geoJsonTrajectories[j]);
 					if (geoJsonTrajectories[j].properties.deviceId == deviceId) deviceIndex = j;
 				}
 				deviceIndices[i] = deviceIndex;
@@ -579,7 +580,7 @@ function showDataTrajectoriesFromCsv(inData) {
 							var csvRow = csv[j].split(',');
 							if (csvRow != '') {
 								//console.log(csvRow);
-								console.log(new Date(csvRow[8]).getTime());
+								//console.log(new Date(csvRow[8]).getTime());
 								if (new Date(csvRow[8]).getTime() >= pickerBeginTime && new Date(csvRow[8]).getTime() < pickerEndTime) {
 									console.log(deviceIndices[data.CacheControl]);
 									geoJsonTrajectories[deviceIndices[data.CacheControl]].geometry.coordinates.push([csvRow[1], csvRow[0], csvRow[8]])
@@ -604,6 +605,8 @@ function showDataTrajectoriesFromCsv(inData) {
 				};
 			}
 		}
+	} else {
+		HandleS3DataVisualization();
 	}
 } // showDataTrajectoriesFromCsv
 
