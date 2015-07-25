@@ -22,23 +22,31 @@
     <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Go Anonymous </button>
     -->
     <button id="acrBypassSignIn" onClick="HandleGoogleLogin2()"> Get Started </button>
-    
+
     <div class="BannerMessageText" id="divLoadingMsg">User Not Logged In..</div>
 
     <br/>
     <label class="BannerHeaderText"></label>
     <br/>
 
-    <!-- Timeslider -->    <!-- Datepicker -->
+    <!-- Timeslider -->
+    <!-- Datepicker -->
     <form oninput="timesliderOutput.value=timeslider.value">
 
         <input type="range" id="timeslider" name="timesliderInput" min="1" max="24" step="1" onchange="updateSliderInput(this.value);">
-        <output name="timesliderOutput" for="timesliderInput">24</output> hours to 
+        <output name="timesliderOutput" for="timesliderInput">24</output> hours to
 
-        <input id="datepicker" type="date" onchange="updateDateTimeInput();" > 
-        <input id="timepicker" type="time" onchange="updateDateTimeInput();"> <br/>
+        <input id="datepicker" type="date" onchange="updateDateTimeInput();">
+        <input id="timepicker" type="time" onchange="updateDateTimeInput();">
+        <br/>
 
-         <!--  onchange="updateSliderInput(this.value);"> -->
+        <select name="cognitoIDPicker" id='cognitoIDPicker' onchange='updateCognitoIDPicker();'>
+            <option value="us-east-1:0035d5b5-607e-483a-96b7-331a597b44c0">us-east-1:0035d5b5-607e-483a-96b7-331a597b44c0</option>
+            <option value="us-east-1:9d8c5740-8fe4-471a-b112-8cd29ec3c684">us-east-1:9d8c5740-8fe4-471a-b112-8cd29ec3c684</option>
+            <option value="us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14">us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14</option>
+        </select>
+
+        <!--  onchange="updateSliderInput(this.value);"> -->
     </form>
     <button id="updateButton" onClick="HandleS3MetaData();" disabled="disabled">Update</button>
 
