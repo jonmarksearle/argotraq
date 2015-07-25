@@ -8,7 +8,8 @@ var cognitoIDList = ['us-east-1:0035d5b5-607e-483a-96b7-331a597b44c0',
                      'us-east-1:9d8c5740-8fe4-471a-b112-8cd29ec3c684',
                      'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14'];
 
-var cognitoID = 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14';
+var cognitoID = $('#cognitoIDPicker').val();
+
 var amazonAccID = '940653267411'; //  AWS account ID
 var identityPoolID = 'us-east-1:d2737579-aaee-49c1-95c7-d78c0dd164ff';
 var roleArnAuth = 'arn:aws:iam::940653267411:role/Cognito_ArgoTraqAuth_Role';
@@ -435,6 +436,17 @@ function setBounds(devs) {
 		if (lat <= minLat) minLat = lat;
 		if (lat >= maxLat) maxLat = lat;
 	}
+	if (maxLng-minLng < 0.05) {
+		maxLng += 0.025
+		minLng -= 0.025
+	}
+	
+	if (maxLat-minLat < 0.05) {
+		maxLat += 0.025
+		minLat -= 0.025
+	}
+	
+	
 	console.log("BBOX: " + minLng + " " + maxLng + " " + minLat + " " + maxLat);
 
 	var southWest = new L.LatLng(maxLat, minLng),
@@ -465,7 +477,7 @@ function HandleS3Data() {
 		deviceIds.push(geoJsonDevices[i].properties['deviceId']);
 	}
 	console.log(deviceIds);
-	console.log(deviceIds.indexOf(geoJsonDevices[1].properties['deviceId']))
+	console.log(deviceIds.indexOf(geoJsonDevices[0].properties['deviceId']))
 
 	//prepare the geoJson Object with the deviceIds
 	for (var j = 0; j < deviceIds.length; j++) {
@@ -517,12 +529,16 @@ function showDataTrajectoriesFromCsv(inData) {
 	var pickerBeginTime = displayedTimePoint.getTime() - displayedLastHours;
 	var pickerEndTime = displayedTimePoint.getTime();
 	console.log(new Date(pickerBeginTime).getTime(), new Date(pickerEndTime).getTime());
+	var deviceIndices = []
 	if (counterDataObjects != 0) {
 		for (var i = 0; i < inData.Contents.length; i++) {
 			var key = inData.Contents[i].Key;
 			//console.log(key);
 			var timeMillis = parseInt(key.split('/')[2]);
-
+			//console.log(timeMillis);
+			var deviceId = key.split('/')[1];
+			//console.log(deviceId);
+			
 			var csvBeginTime = timeMillis;
 			var csvEndTime = timeMillis + (24 * hoursToMillis) - 60000;
 			//console.log(new Date(csvBeginTime), new Date(csvEndTime));
@@ -534,6 +550,14 @@ function showDataTrajectoriesFromCsv(inData) {
 				(pickerEndTime >= csvBeginTime && pickerEndTime <= csvEndTime)
 			) {
 				//TODO verarbeite CSV dateien hier
+				var deviceIndex;
+				for (var j = 0; j < geoJsonTrajectories.length; j++) {
+					//console.log(geoJsonObj[j]);
+					if (geoJsonTrajectories[j].properties.deviceId == deviceId) deviceIndex = j;
+				}
+				deviceIndices[i] = deviceIndex;
+				console.log(deviceIndex);
+				
 				s3.getObject({
 					Bucket: s3CSVBucket,
 					Key: inData.Contents[i].Key,
@@ -555,12 +579,10 @@ function showDataTrajectoriesFromCsv(inData) {
 							var csvRow = csv[j].split(',');
 							if (csvRow != '') {
 								//console.log(csvRow);
-								if (csvRow[7] >= pickerBeginTime && csvRow[7] < pickerEndTime) {
-									var deviceIndex;
-									for (var k = 0; k < geoJsonTrajectories.length; k++) {
-										if (geoJsonTrajectories[k].properties.deviceId == csvRow[4]) deviceIndex = k;
-									}
-									geoJsonTrajectories[deviceIndex].geometry.coordinates.push([csvRow[6], csvRow[5], csvRow[7]])
+								console.log(new Date(csvRow[8]).getTime());
+								if (new Date(csvRow[8]).getTime() >= pickerBeginTime && new Date(csvRow[8]).getTime() < pickerEndTime) {
+									console.log(deviceIndices[data.CacheControl]);
+									geoJsonTrajectories[deviceIndices[data.CacheControl]].geometry.coordinates.push([csvRow[1], csvRow[0], csvRow[8]])
 								}
 							}
 						}
@@ -578,6 +600,7 @@ function showDataTrajectoriesFromCsv(inData) {
 				if (counterDataObjects == 0) {
 					console.log(counterDataObjects);
 					console.log('else move on');
+					HandleS3DataVisualization();
 				};
 			}
 		}
@@ -718,6 +741,11 @@ function updateSliderInput(val) {
 function updateDateTimeInput() {
 	displayedTimePoint = new Date($('#datepicker').val() + ' ' + $('#timepicker').val());
 	console.log(displayedTimePoint);
+}
+
+function updateCognitoIDPicker() {
+	cognitoID = $('#cognitoIDPicker').val();
+	console.log(cognitoID);
 }
 
 function IndicateRetrevingData() { // Indicate that data is now being retreived
