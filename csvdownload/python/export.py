@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 # Name:         export.py
 # Author:       Heinrich Löwen
 # Version:      1.0
@@ -16,6 +19,7 @@
 # - Should actually build the attribute names list from the json objects and use this as the csv column headers
 # 
 
+import sys
 import boto3
 import time
 import calendar
@@ -24,15 +28,23 @@ import json
 import csv
 import gzip
 import os
+import shutil
 
 # init Global variables
 s3 = boto3.resource('s3')
 # Data Bucket
 bucket_name = 'argotraq-data'
-cognito_id = 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14'
+
+cognito_id = ''
+try:
+    cognito_id = sys.argv[1]
+except IndexError:
+    cognito_id = 'us-east-1:e65610fc-84a3-4ff4-9381-6a029f30ef14'
+print cognito_id
+
 meta_delimiter = 'meta'
 bucket_exists = False
-# CSVGZ Bucket
+# CSV GZ Bucket
 new_bucket_name = 'argotraq-csv'
 new_bucket_exists = False
 
@@ -57,6 +69,9 @@ new_bucket = s3.Bucket(new_bucket_name)
 csvobject = {}
 # Existing data
 objects = {}
+
+# CSV rows
+csvrows = ['lat','lng','maxAcceleration','minAcceleration','maxAccelerationWithG','minAccelerationWithG','maxSpeed','minSpeed','timeStamp']
 
 hourToMillis = 3600000
 hour10ToMillis = hourToMillis*10
@@ -113,9 +128,12 @@ def createNewObjects():
     
     # Iterate through bucket: create in devices arrays for each day
     for obj in bucket.objects.filter(Prefix=cognito_id):
-        key = obj.key.split('/')
-        timemillis = key[1].split('-')[0]
-        deviceid = key[1].split('-')[1]
+        try:
+            key = obj.key.split('/')
+            timemillis = key[1].split('-')[0]
+            deviceid = key[1].split('-')[1]
+        except IndexError:
+            continue
         if not(timemillis == meta_delimiter):
             if (int(timemillis) < int(todayMillis())):
                 day = millisToDate(int(timemillis))
@@ -128,9 +146,12 @@ def createNewObjects():
     
     # Iterate through bucket and dump data into dictionary > array
     for obj in bucket.objects.filter(Prefix=cognito_id):
-        key = obj.key.split('/')
-        timemillis = key[1].split('-')[0]
-        deviceid = key[1].split('-')[1]
+        try:
+            key = obj.key.split('/')
+            timemillis = key[1].split('-')[0]
+            deviceid = key[1].split('-')[1]
+        except IndexError:
+            continue
         if not(timemillis == meta_delimiter):
             if (int(timemillis) < int(todayMillis())):
                 day = millisToDate(int(timemillis))
@@ -165,37 +186,46 @@ def createCSVFiles():
         print devkey
         for daykey in objects[devkey].keys():
             csvfile = []
-            csvfile.append(['maxZ','maxAcceleration','timeStamp','minZ','deviceid','lat','lng','timemillis','minAcceleration'])
-#CHANGETO:       csvfile.append(['lat','lng','maxAcceleration','minAcceleration','maxAccelerationWithG','minAccelerationWithG','maxSpeed','minSpeed','timeStamp'])
+            #csvfile.append(['maxZ','maxAcceleration','timeStamp','minZ','deviceid','lat','lng','timemillis','minAcceleration'])
+            csvfile.append(['lat','lng','maxAcceleration','minAcceleration','maxAccelerationWithG','minAccelerationWithG','maxSpeed','minSpeed','timeStamp'])
             for entry in objects[devkey][daykey]:
                 row = []
-                for key,value in entry.iteritems():
-                    row.append(value)
+                for val in csvrows:
+                    try:
+                        row.append(entry[val])
+                    except KeyError:
+                        row.append('');
                 csvfile.append(row)
             # save compressed files
             filename = cognito_id+'/'+devkey+'/'+str(dateToMillis(daykey))
-            if not os.path.exists('csvs/'+cognito_id+'/'+devkey):
-                os.makedirs('csvs/'+cognito_id+'/'+devkey)
+            if not os.path.exists('csv/'+cognito_id+'/'+devkey):
+                os.makedirs('csv/'+cognito_id+'/'+devkey)
             outcsvstring = ''
             for item in csvfile:
                 outcsvstring += ','.join([str(x) for x in item])
                 outcsvstring += '\n'
-            zip_out = gzip.open('csvs/'+filename+'.csv.gz','wb')
+            zip_out = gzip.open('csv/'+filename+'.csv.gz','wb')
             zip_out.write(outcsvstring)
             zip_out.close()
             # upload file to s3
-            uploadfile = open('csvs/'+filename+".csv.gz",'r')
+            uploadfile = open('csv/'+filename+".csv.gz",'r')
             s3.Bucket(new_bucket_name).put_object(Key=filename, Body=uploadfile)
+    print 'All files of this Bucket uploaded'
 
 def listUploadedFiles():
     for obj in new_bucket.objects.all():
         print obj.key
+
+def deleteLocalCSVFiles():
+    print 'Remove local saved files from file system.'
+    shutil.rmtree('csv')
     
 def main():
     createNewObjects()
     #loadLocalObjects()
     createCSVFiles()
     #listUploadedFiles()
+    deleteLocalCSVFiles()
     
 if __name__ == "__main__":
    main()
